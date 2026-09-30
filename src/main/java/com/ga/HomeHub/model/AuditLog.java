@@ -17,7 +17,7 @@ public class AuditLog {
     @Column
     private String action;
     private String entityType;
-    private String entityId;
+    private Long entityId;
 
     @Column
     private String description;
@@ -53,11 +53,11 @@ public class AuditLog {
         this.entityType = entityType;
     }
 
-    public String getEntityId() {
+    public Long getEntityId() {
         return entityId;
     }
 
-    public void setEntityId(String entityId) {
+    public void setEntityId(Long entityId) {
         this.entityId = entityId;
     }
 
