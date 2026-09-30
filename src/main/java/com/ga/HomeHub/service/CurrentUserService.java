@@ -14,6 +14,7 @@ public class CurrentUserService {
         this.userRepository = userRepository;
     }
 
+    //returns the currently authenticated HomeHub user.
     public User getCurrentUser(){
         String emailAddress = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findUserByEmailAddress(emailAddress);
