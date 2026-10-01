@@ -18,6 +18,9 @@ public class AuthService {
     private final AuthenticationManager auth;
     private final EmailService email;
 //    private final JWTUtils jwt;
+public static void main(String[] args) {
+
+}
 
 
 
