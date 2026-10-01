@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 
 @Repository
-public interface BookingRepository extends JpaRepository<BookingRepository,Long> {
+public interface BookingRepository extends JpaRepository<Booking,Long> {
     Page<Booking> findByCustomerId(Long customerId, Pageable pageable);
     Page<Booking> findByCustomerIdAndStatus(Long customerId, BookingStatus status, Pageable pageable);
     List<Booking> findServiceProviderIdAndBookingDateAndStatus(Long providerId, LocalDate date, Collection<BookingStatus> statuses);
