@@ -1,0 +1,15 @@
+**For the email service:**
+https://mailtrap.io/blog/java-send-email/
+<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
+
+notificationService:
+https://stackoverflow.com/questions/68190944/how-to-send-unread-messages-notifications-with-server-sent-events-in-spring-boot
+https://grapeup.com/blog/how-to-build-real-time-notification-service-using-server-sent-events-sse
+
+@RestControllerAdvice:
+https://medium.com/javaguides/spring-boot-restcontrolleradvice-annotation-complete-guide-with-examples-5254a4f6f62d
+

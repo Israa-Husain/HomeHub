@@ -1,5 +1,6 @@
 package com.ga.HomeHub.service;
 
+import com.ga.HomeHub.exception.UnauthorizedException;
 import com.ga.HomeHub.model.User;
 import com.ga.HomeHub.repository.UserRepository;
 import lombok.AllArgsConstructor;
