@@ -1,5 +1,6 @@
 package com.ga.HomeHub.service;
 
+import com.ga.HomeHub.dto.auth.ChangePasswordRequest;
 import com.ga.HomeHub.dto.user.UpdateUserRequest;
 import com.ga.HomeHub.dto.user.UserResponse;
 import com.ga.HomeHub.exception.InformationNotFoundException;
@@ -9,11 +10,12 @@ import com.ga.HomeHub.model.enums.UserStatus;
 import com.ga.HomeHub.repository.UserRepository;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.awt.print.Pageable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -45,16 +47,16 @@ public class UserService {
         return UserResponse.from(user);
     }
 
-//    public void changePassword(ChangePasswordRequest newPassword){
-//        User user = currentUserService.getCurrentUser();
-//        if(!passwordEncoder.matches(newPassword.currentPassword(), user.getPasswordHash())) throw new UnauthorizedException("Current password is incorrect");
-//        user.getPasswordHash(passwordEncoder.encode(newPassword.newPassword()));
-//        userRepository.save(user);
-//    }
+    public void changePassword(ChangePasswordRequest newPassword){
+        User user = currentUserService.getCurrentUser();
+        if(!passwordEncoder.matches(newPassword.currentPassword(), user.getPasswordHash())) throw new UnauthorizedException("Current password is incorrect");
+        user.setPasswordHash(passwordEncoder.encode(newPassword.newPassword()));
+        userRepository.save(user);
+    }
 
-//    public Page<UserResponse> all(Pageable pageable){
-//        return userRepository.findAll(pageable).map(UserResponse::from);
-//    }
+    public Page<UserResponse> getAllUsers(Pageable pageable){
+        return userRepository.findAll(pageable).map(UserResponse::from);
+    }
 
     public String picture(MultipartFile file) {
         User u = currentUserService.getCurrentUser();
