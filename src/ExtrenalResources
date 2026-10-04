@@ -13,3 +13,7 @@ https://grapeup.com/blog/how-to-build-real-time-notification-service-using-serve
 @RestControllerAdvice:
 https://medium.com/javaguides/spring-boot-restcontrolleradvice-annotation-complete-guide-with-examples-5254a4f6f62d
 
+@PreAuthorize:
+Restricting access based on roles, ensuring only authenticated users can access certain methods.
+https://www.geeksforgeeks.org/advance-java/spring-security-preauthorize-annotation-for-method-security/
+
