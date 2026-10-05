@@ -45,7 +45,7 @@ public class BookingService {
         ServiceOffering service = services.findById(request.serviceId()).orElseThrow(()-> new InformationNotFoundException("Service not found"));
         LocalTime endTime = request.startTime().plusMinutes(service.getDurationMinutes());
         boolean slot = availability.findByProviderIdAndDate(service.getProvider().getId(), request.bookingDate()).stream().anyMatch(a->a.contains(request.startTime(), endTime));
-        boolean clash = repository.findServiceProviderIdAndBookingDateAndStatus(service.getProvider().getId(), request.bookingDate(), List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)).stream().anyMatch(b-> request.startTime().isBefore(b.getEndTime()) && endTime.isAfter(b.getStartTime()));
+        boolean clash = repository.findServiceProviderIdAndBookingDateAndStatusIn(service.getProvider().getId(), request.bookingDate(), List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)).stream().anyMatch(b-> request.startTime().isBefore(b.getEndTime()) && endTime.isAfter(b.getStartTime()));
         Booking booking = new Booking();
 
         if(request.bookingDate().isBefore(LocalDate.now())){

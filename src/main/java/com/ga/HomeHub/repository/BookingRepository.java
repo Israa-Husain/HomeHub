@@ -15,5 +15,5 @@ import java.util.List;
 public interface BookingRepository extends JpaRepository<Booking,Long> {
     Page<Booking> findByCustomerId(Long customerId, Pageable pageable);
     Page<Booking> findByCustomerIdAndStatus(Long customerId, BookingStatus status, Pageable pageable);
-    List<Booking> findServiceProviderIdAndBookingDateAndStatus(Long providerId, LocalDate date, Collection<BookingStatus> statuses);
+    List<Booking> findServiceProviderIdAndBookingDateAndStatusIn(Long providerId, LocalDate bookingDate, Collection<BookingStatus> statuses);
 }
