@@ -1,10 +1,12 @@
 package com.ga.HomeHub.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.time.LocalDateTime;
 
 @Entity
+@Data
 public class EmailVerificationToken {
 
     @Id
@@ -14,52 +16,15 @@ public class EmailVerificationToken {
     @ManyToOne(optional = false)
     private User user;
 
-    @Column(unique = true)
+    @Column(nullable=false,unique = true)
     private String token;
 
-    @Column
+    @Column(nullable=false)
     private LocalDateTime expiredAt;
     private LocalDateTime usedAt;
 
-    @Column
+    @Column(nullable=false)
     private LocalDateTime createdAt = LocalDateTime.now();
-
-    //GETTERS & SETTERS
-    public Long getId() {
-        return id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public String getToken() {
-        return token;
-    }
-
-    public void setToken(String token) {
-        this.token = token;
-    }
-
-    public LocalDateTime getExpiredAt() {
-        return expiredAt;
-    }
-
-    public void setExpiredAt(LocalDateTime expiredAt) {
-        this.expiredAt = expiredAt;
-    }
-
-    public LocalDateTime getUsedAt() {
-        return usedAt;
-    }
-
-    public void setUsedAt(LocalDateTime usedAt) {
-        this.usedAt = usedAt;
-    }
 
     public boolean isExpired(){
         return LocalDateTime.now().isAfter(expiredAt);
