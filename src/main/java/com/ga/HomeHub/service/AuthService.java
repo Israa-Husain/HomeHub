@@ -55,6 +55,7 @@ public class AuthService {
         users.save(user);
 
         EmailVerificationToken token = new EmailVerificationToken();
+        token.setUser(user);
         token.setToken(UUID.randomUUID().toString());
         token.setExpiredAt(LocalDateTime.now().plusHours(24));
         verifyRepository.save(token);
