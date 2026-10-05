@@ -21,9 +21,9 @@ public class AuthController {
     }
 
     @GetMapping("/verify")
-    public Map<String,String> verify(@RequestParam String token){
+    public ResponseEntity<?> verifyEmail(@RequestParam String token) {
         authService.verifyEmail(token);
-        return Map.of("message","Email verified");
+        return ResponseEntity.ok(Map.of("message", "Email verified. You can login."));
     }
 
     @PostMapping("/login")
