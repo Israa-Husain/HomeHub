@@ -11,24 +11,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @MappedSuperclass
+@Data
 public abstract class BaseEntity {
-    @Column
-    protected LocalDateTime createdAt;
-
-    @Column
-    protected LocalDateTime updatedAt;
-
+    @Column(nullable = false)
     @CreationTimestamp
-    void created(){createdAt=updatedAt=LocalDateTime.now();}
+    private LocalDateTime createdAt;
 
+    @Column(nullable = false)
     @UpdateTimestamp
-    void updated(){updatedAt=LocalDateTime.now();}
-
-    public LocalDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public LocalDateTime getUpdatedAt() {
-        return updatedAt;
-    }
+    private LocalDateTime updatedAt;
 }
