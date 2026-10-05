@@ -31,7 +31,7 @@ public class AuthController {
         return authService.loginUser(request);
     }
 
-    @PostMapping("/forget-password")
+    @PostMapping("/forgot-password")
     public Map<String,String> forgot(@RequestBody ForgotPasswordRequest request){
         authService.requestPasswordReset(request.email());
         return Map.of("message","Sent reset if the account exist");
