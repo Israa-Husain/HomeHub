@@ -43,7 +43,7 @@ public class AuthService {
     private String baseUrl;
 
     public void registerUser(RegisterRequest request){
-        if(users.existsByEmailAddress(request.email())){
+        if(users.existsByEmailAddress(request.email().toLowerCase())){
             throw new InformationExistException("Email already registered");
         }
         if(request.role() == Role.ADMIN){
