@@ -2,8 +2,10 @@ package com.ga.HomeHub.model;
 
 import com.ga.HomeHub.model.enums.ServiceStatus;
 import jakarta.persistence.*;
+import lombok.Data;
 
 @Entity
+@Data
 @Table(name = "services")
 public class ServiceOffering extends BaseEntity{
 
@@ -17,79 +19,19 @@ public class ServiceOffering extends BaseEntity{
     @ManyToOne(optional = false)
     private Category category;
 
-    @Column
+    @Column(nullable=false)
     private String name;
 
     @Column
     private String description;
 
-    @Column
+    @Column(nullable=false)
     private Integer durationMinutes;
 
-    @Column
+    @Column(nullable=false)
     private Double price;
 
     @Enumerated(EnumType.STRING)
     private ServiceStatus status = ServiceStatus.ACTIVE;
 
-    //GETTERS & SETTERS
-    public Long getId() {
-        return id;
-    }
-
-    public ProviderProfile getProvider() {
-        return provider;
-    }
-
-    public void setProvider(ProviderProfile provider) {
-        this.provider = provider;
-    }
-
-    public Category getCategory() {
-        return category;
-    }
-
-    public void setCategory(Category category) {
-        this.category = category;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Integer getDurationMinutes() {
-        return durationMinutes;
-    }
-
-    public void setDurationMinutes(Integer durationMinutes) {
-        this.durationMinutes = durationMinutes;
-    }
-
-    public Double getPrice() {
-        return price;
-    }
-
-    public void setPrice(Double price) {
-        this.price = price;
-    }
-
-    public ServiceStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(ServiceStatus status) {
-        this.status = status;
-    }
 }
