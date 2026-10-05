@@ -1,11 +1,13 @@
 package com.ga.HomeHub.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
+@Data
 public class Availability extends BaseEntity{
 
     @Id
@@ -15,61 +17,17 @@ public class Availability extends BaseEntity{
     @ManyToOne(optional = false)
     private ProviderProfile provider;
 
-    @Column
+    @Column(nullable=false)
     private LocalDate date;
 
-    @Column
+    @Column(nullable=false)
     private LocalTime startTime;
 
-    @Column
+    @Column(nullable=false)
     private LocalTime endTime;
 
-    @Column
+    @Column(nullable=false)
     private boolean isAvailable = true;
-
-    public Long getId() {
-        return id;
-    }
-
-    public ProviderProfile getProvider() {
-        return provider;
-    }
-
-    public void setProvider(ProviderProfile provider) {
-        this.provider = provider;
-    }
-
-    public LocalDate getDate() {
-        return date;
-    }
-
-    public void setDate(LocalDate date) {
-        this.date = date;
-    }
-
-    public LocalTime getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(LocalTime startTime) {
-        this.startTime = startTime;
-    }
-
-    public LocalTime getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(LocalTime endTime) {
-        this.endTime = endTime;
-    }
-
-    public boolean isAvailable() {
-        return isAvailable;
-    }
-
-    public void setAvailable(boolean available) {
-        isAvailable = available;
-    }
 
     //check if the requested booking is within the provider's available time.
     public boolean contains(LocalTime start,LocalTime end){
