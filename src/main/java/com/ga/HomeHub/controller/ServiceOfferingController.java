@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @AllArgsConstructor
-@RequestMapping("/ai/services")
+@RequestMapping("/api/services")
 public class ServiceOfferingController {
     private final ServiceOfferingService serviceOfferingService;
 
