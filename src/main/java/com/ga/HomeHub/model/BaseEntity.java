@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import lombok.Data;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -17,11 +18,9 @@ public abstract class BaseEntity {
     @Column
     protected LocalDateTime updatedAt;
 
-    @PrePersist
     @CreationTimestamp
     void created(){createdAt=updatedAt=LocalDateTime.now();}
 
-    @PreUpdate
     @UpdateTimestamp
     void updated(){updatedAt=LocalDateTime.now();}
 
