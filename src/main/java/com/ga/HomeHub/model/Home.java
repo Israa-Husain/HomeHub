@@ -1,8 +1,10 @@
 package com.ga.HomeHub.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
 @Entity
+@Data
 public class Home extends BaseEntity{
 
     @Id
@@ -12,50 +14,13 @@ public class Home extends BaseEntity{
     @ManyToOne(optional = false)
     private User owner;
 
-    @Column
+    @Column(nullable=false)
     private String name;
 
-    @Column
+    @Column(nullable=false)
     private String city;
 
-    @Column
+    @Column(nullable=false)
     private String address;
 
-
-    //GETTERS & SETTERS
-    public Long getId() {
-        return id;
-    }
-
-    public User getOwner() {
-        return owner;
-    }
-
-    public void setOwner(User owner) {
-        this.owner = owner;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getCity() {
-        return city;
-    }
-
-    public void setCity(String city) {
-        this.city = city;
-    }
-
-    public String getAddress() {
-        return address;
-    }
-
-    public void setAddress(String address) {
-        this.address = address;
-    }
 }
