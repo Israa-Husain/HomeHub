@@ -75,6 +75,9 @@ public class AuthService {
 
     public LoginResponse loginUser(LoginRequest request){
         User user = users.findUserByEmailAddress(request.email().toLowerCase());
+        if(user == null){
+            throw new UnauthorizedException("Invalid credentials");
+        }
         if(user.getStatus() != UserStatus.ACTIVE){
             throw new UnauthorizedException("Inactive Account");
         }
@@ -84,7 +87,7 @@ public class AuthService {
         try{
             auth.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
         } catch (AuthenticationException e){
-            throw new UnauthorizedException("Invalid credentials"+e);
+            throw new UnauthorizedException("Invalid credentials");
         }
         MyUserDetails userDetails = new MyUserDetails(user);
         return new LoginResponse(jwt.generateJwtToken(userDetails));
