@@ -48,7 +48,7 @@ public class AuthService {
         User user = new User();
         user.setFirstName(request.firstname());
         user.setLastName(request.lastName());
-        user.setEmail(request.email().toLowerCase());
+        user.setEmailAddress(request.email().toLowerCase());
         user.setPhoneNumber(request.phoneNumber());
         user.setPasswordHash(encoder.encode(request.password()));
         user.setRole(request.role());
@@ -58,7 +58,7 @@ public class AuthService {
         token.setToken(UUID.randomUUID().toString());
         token.setExpiredAt(LocalDateTime.now().plusHours(24));
         verifyRepository.save(token);
-        email.sendEmail(user.getEmail(), "Verify HomeHub account", "Verification token: "+token.getToken());
+        email.sendEmail(user.getEmailAddress(), "Verify HomeHub account", "Verification token: "+token.getToken());
     }
 
     public void verifyEmail(String token){
@@ -100,7 +100,7 @@ public class AuthService {
 
             resetRepository.save(token);
 
-            email.sendEmail(user.getEmail(), "HomeHub password reset", "Reset token: " + token.getToken());
+            email.sendEmail(user.getEmailAddress(), "HomeHub password reset", "Reset token: " + token.getToken());
         }
     }
 

@@ -129,6 +129,6 @@ public class BookingService {
 
     private void sendBookingNotification(Booking booking, String message){
         notification.sendNotifications(booking.getCustomer().getId(), message+" (#"+booking.getId()+")");
-        email.sendEmail(booking.getCustomer().getEmail(), "HomeHub booking update", message+" for booking #"+booking.getId());
+        email.sendEmail(booking.getCustomer().getEmailAddress(), "HomeHub booking update", message+" for booking #"+booking.getId());
     }
 }
