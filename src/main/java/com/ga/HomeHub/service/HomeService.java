@@ -31,7 +31,7 @@ public class HomeService {
 
     public Home getHomeById(Long id){
         Home home = repository.findById(id).orElseThrow(()-> new InformationNotFoundException("Home not found"));
-        if(!home.getId().equals(current.getCurrentUser().getId())){
+        if(!home.getOwner().getId().equals(current.getCurrentUser().getId())){
             throw new UnauthorizedException("This home does not belong to you");
         }
         return home;

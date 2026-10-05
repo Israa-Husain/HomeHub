@@ -17,7 +17,7 @@ import com.ga.HomeHub.repository.PasswordResetTokenRepository;
 import com.ga.HomeHub.repository.UserRepository;
 import com.ga.HomeHub.security.JWTUtils;
 import com.ga.HomeHub.security.MyUserDetails;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -29,7 +29,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class AuthService {
     private final UserRepository users;
     private final EmailVerificationTokenRepository verifyRepository;
