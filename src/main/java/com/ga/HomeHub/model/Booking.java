@@ -2,11 +2,13 @@ package com.ga.HomeHub.model;
 
 import com.ga.HomeHub.model.enums.BookingStatus;
 import jakarta.persistence.*;
+import lombok.Data;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 
 @Entity
+@Data
 @Table(name = "bookings")
 public class Booking extends BaseEntity{
 
@@ -23,13 +25,13 @@ public class Booking extends BaseEntity{
     @ManyToOne(optional = false)
     private ServiceOffering service;
 
-    @Column
+    @Column(nullable=false)
     private LocalDate bookingDate;
 
-    @Column
+    @Column(nullable=false)
     private LocalTime startTime;
 
-    @Column
+    @Column(nullable=false)
     private LocalTime endTime;
 
     @Enumerated(EnumType.STRING)
@@ -38,72 +40,4 @@ public class Booking extends BaseEntity{
     @Column
     private String note;
 
-    //GETTERS & SETTERS
-    public Long getId() {
-        return id;
-    }
-
-    public User getCustomer() {
-        return customer;
-    }
-
-    public void setCustomer(User customer) {
-        this.customer = customer;
-    }
-
-    public Home getHome() {
-        return home;
-    }
-
-    public void setHome(Home home) {
-        this.home = home;
-    }
-
-    public ServiceOffering getService() {
-        return service;
-    }
-
-    public void setService(ServiceOffering service) {
-        this.service = service;
-    }
-
-    public LocalDate getBookingDate() {
-        return bookingDate;
-    }
-
-    public void setBookingDate(LocalDate bookingDate) {
-        this.bookingDate = bookingDate;
-    }
-
-    public LocalTime getStartTime() {
-        return startTime;
-    }
-
-    public void setStartTime(LocalTime startTime) {
-        this.startTime = startTime;
-    }
-
-    public LocalTime getEndTime() {
-        return endTime;
-    }
-
-    public void setEndTime(LocalTime endTime) {
-        this.endTime = endTime;
-    }
-
-    public BookingStatus getStatus() {
-        return status;
-    }
-
-    public void setStatus(BookingStatus status) {
-        this.status = status;
-    }
-
-    public String getNote() {
-        return note;
-    }
-
-    public void setNote(String note) {
-        this.note = note;
-    }
 }
