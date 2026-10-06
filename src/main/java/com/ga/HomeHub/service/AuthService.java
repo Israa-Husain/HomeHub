@@ -130,14 +130,31 @@ public class AuthService {
         }
     }
 
+//    public void resetPassword(ResetPasswordRequest request) {
+//        PasswordResetToken t = resetRepository.findByToken(request.token()).orElseThrow(() -> new InformationNotFoundException("Reset token not found"));
+//        if (t.getUsedAt() != null || t.isExpired()){
+//            throw new UnauthorizedException("Reset token is invalid or expired");
+//        }
+//        t.getUser().setPasswordHash(encoder.encode(request.newPassword()));
+//        users.save(t.getUser());
+//        t.markUsed();
+//        resetRepository.save(t);
+//    }
+
     public void resetPassword(ResetPasswordRequest request) {
         PasswordResetToken t = resetRepository.findByToken(request.token()).orElseThrow(() -> new InformationNotFoundException("Reset token not found"));
-        if (t.getUsedAt() != null || t.isExpired()){
-            throw new UnauthorizedException("Reset token is invalid or expired");
+
+        if (t.getUsedAt() != null || t.isExpired()) {
+            throw new IllegalArgumentException("Reset token is invalid or expired");
         }
-        t.getUser().setPasswordHash(encoder.encode(request.newPassword()));
-        users.save(t.getUser());
+
+        User user = t.getUser();
+        user.setPasswordHash(encoder.encode(request.newPassword()));
+        users.save(user);
+
         t.markUsed();
         resetRepository.save(t);
+
+        email.sendEmail(user.getEmailAddress(), "HomeHub - Password Changed", "Hello " + user.getFirstName() + ",\n\n" + "Your HomeHub password has been changed successfully.\n\n" + "HomeHub Team");
     }
 }
