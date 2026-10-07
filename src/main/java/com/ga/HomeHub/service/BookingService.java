@@ -26,6 +26,9 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 @Service
 @AllArgsConstructor
 public class BookingService {
@@ -38,6 +41,7 @@ public class BookingService {
     private final NotificationService notification;
     private final EmailService email;
 
+    private final Logger logger = Logger.getLogger(BookingService.class.getName());
 
     public Booking createBooking(BookingRequest request){
         User user = current.getCurrentUser();
@@ -72,6 +76,8 @@ public class BookingService {
         booking.setEndTime(endTime);
         booking.setNote(request.note());
         booking = repository.save(booking);
+
+        logger.log(Level.INFO, "Booking created successfully");
 
         audit.record(user,"Create Booking","Booking", booking.getId(), "User created booking");
         sendProviderNotification(booking, "You received a new booking");
@@ -123,6 +129,7 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         repository.save(booking);
+        logger.log(Level.INFO, "Booking cancelled successfully");
         sendProviderNotification(booking, "Booking cancelled");
         audit.record(user, "Cancel Booking","Booking", booking.getId(), "Booking cancelled");
         return booking;
@@ -144,6 +151,7 @@ public class BookingService {
 
         booking.setStatus(newStatus);
         repository.save(booking);
+        logger.log(Level.INFO, "Booking status updated to: " + newStatus);
         audit.record(user,"Update Booking status","Booking", booking.getId(),"Booking status changed to "+newStatus);
         sendBookingNotification(booking, "Booking status changed to "+newStatus);
         return booking;

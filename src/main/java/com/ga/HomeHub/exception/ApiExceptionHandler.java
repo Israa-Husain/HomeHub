@@ -8,9 +8,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    private final Logger logger = Logger.getLogger(ApiExceptionHandler.class.getName());
+
     private ResponseEntity<ApiError> out(HttpStatus status, Exception e, HttpServletRequest r){
         return ResponseEntity.status(status).body(new ApiError(LocalDateTime.now(),status.value(),status.name(),e.getMessage(),r.getRequestURI()));
     }
@@ -66,6 +70,8 @@ public class ApiExceptionHandler {
     ResponseEntity<ApiError> internalError(
             Exception e,
             HttpServletRequest request) {
+
+        logger.log(Level.SEVERE, "Unexpected application error", e);
 
         return out(
                 HttpStatus.INTERNAL_SERVER_ERROR,

@@ -11,7 +11,8 @@ import com.ga.HomeHub.model.enums.Role;
 import com.ga.HomeHub.repository.ProviderProfileRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
-
+import java.util.logging.Level;
+import java.util.logging.Logger;
 @Service
 @AllArgsConstructor
 public class ProviderService {
@@ -19,6 +20,8 @@ public class ProviderService {
     private final ProviderProfileRepository repository;
     private final CurrentUserService current;
     private final AuditLogService audit;
+
+    private final Logger logger = Logger.getLogger(ProviderService.class.getName());
 
 
     public ProviderProfile createProviderProfile(ProviderRequest request){
@@ -48,6 +51,7 @@ public class ProviderService {
         ProviderProfile provider = repository.findById(id).orElseThrow(()-> new InformationNotFoundException("Provider not found"));
         provider.setProviderStatus(ProviderStatus.APPROVED);
         ProviderProfile savedProvider = repository.save(provider);
+        logger.log(Level.INFO, "Admin approved provider");
         audit.record(current.getCurrentUser(), "Approve Provider", "ProviderProfile", savedProvider.getId(), "Admin approved provider");
         return savedProvider;
     }

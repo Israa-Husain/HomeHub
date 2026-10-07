@@ -9,7 +9,6 @@ import com.ga.HomeHub.model.User;
 import com.ga.HomeHub.model.enums.UserStatus;
 import com.ga.HomeHub.repository.UserRepository;
 import lombok.AllArgsConstructor;
-import lombok.Data;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -23,6 +22,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Set;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Service
 @AllArgsConstructor
@@ -32,6 +33,7 @@ public class UserService {
     private final AuditLogService auditLogService;
     private final PasswordEncoder passwordEncoder;
 
+    private final Logger logger = Logger.getLogger(UserService.class.getName());
 
     public UserResponse getCurrentUserProfile() {
         return UserResponse.from(currentUserService.getCurrentUser());
@@ -84,6 +86,7 @@ public class UserService {
         User user = userRepository.findById(id).orElseThrow(()-> new InformationNotFoundException("User not found"));
         user.setStatus(UserStatus.INACTIVE);
         userRepository.save(user);
+        logger.log(Level.INFO, "Admin deactivated user");
         auditLogService.record(currentUserService.getCurrentUser(), "Deactivate User", "User",id,"Admin deactivated the user.");
     }
 
