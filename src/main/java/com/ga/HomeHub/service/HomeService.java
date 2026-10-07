@@ -26,11 +26,14 @@ public class HomeService {
     }
 
     public Page<Home> getCurrentUserHomes(Pageable p){
-        return repository.findByOwnerId(current.getCurrentUser().getId(), p);
+        return repository.findByOwnerIdAndActiveTrue(current.getCurrentUser().getId(), p);
     }
 
     public Home getHomeById(Long id){
         Home home = repository.findById(id).orElseThrow(()-> new InformationNotFoundException("Home not found"));
+        if(!home.isActive()){
+            throw new InformationNotFoundException("Home not found");
+        }
         if(!home.getOwner().getId().equals(current.getCurrentUser().getId())){
             throw new UnauthorizedException("This home does not belong to you");
         }
@@ -46,6 +49,8 @@ public class HomeService {
     }
 
     public void deleteHome(Long id){
-        repository.delete(getHomeById(id));
+        Home home = getHomeById(id);
+        home.setActive(false);
+        repository.save(home);
     }
 }

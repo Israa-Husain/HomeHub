@@ -9,5 +9,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface HomeRopository extends JpaRepository<Home,Long> {
-    Page<Home> findByOwnerId(Long ownerId, Pageable pageable);
+    Page<Home> findByOwnerIdAndActiveTrue(Long ownerId, Pageable pageable);
 }
