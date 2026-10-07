@@ -1,35 +1,49 @@
 package com.ga.HomeHub.config;
 
+import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Component;
-import java.io.IOException;
-import java.util.concurrent.ConcurrentMap;
-import jakarta.servlet.*;
-import jakarta.servlet.http.*;
 import org.springframework.web.filter.OncePerRequestFilter;
-import java.util.concurrent.*;
+
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class RateLimit extends OncePerRequestFilter {
-    private record Counter(long start, int count) {
-    }
+    private final Map<String, Integer> requestCounts = new HashMap<>();
+    private final Map<String, Long> startTimes = new HashMap<>();
 
-    private final ConcurrentMap<String, Counter> map = new ConcurrentHashMap<>();
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+        String path = request.getRequestURI();
 
-    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException{
-        String path = req.getRequestURI();
+        // Only rate limit selected public endpoints
         if(path.equals("/api/auth/login") || path.equals("/api/auth/register") || path.equals("/api/auth/forgot-password")){
-            String key = req.getRemoteAddr() + path;
-            long now = System.currentTimeMillis();
-            Counter c = map.compute(key, (k, v) -> v == null || now - v.start() > 60000 ? new Counter(now, 1) : new Counter(v.start(), v.count() + 1));
-            if(c.count() > 10){
-                res.setStatus(429);
-                res.getWriter().write("Too many requests");
-                return;
+
+            String key = request.getRemoteAddr() + path;
+            long currentTime = System.currentTimeMillis();
+
+            // First request or 60 seconds have passed
+            if(!startTimes.containsKey(key) || currentTime - startTimes.get(key) > 60000){
+                startTimes.put(key, currentTime);
+                requestCounts.put(key, 1);
+            } else{
+                int count = requestCounts.get(key) + 1;
+                requestCounts.put(key, count);
+
+                // More than 10 requests in 60 seconds
+                if(count > 10){
+                    response.setStatus(429);
+                    response.setContentType("application/json");
+                    response.getWriter()
+                            .write("{\"message\":\"Too many requests\"}");
+                    return;
+                }
             }
         }
-        chain.doFilter(req, res);
+        filterChain.doFilter(request, response);
     }
 }
-
