@@ -27,6 +27,8 @@ public class ServiceOfferingService {
             throw new UnauthorizedException("Provider must be approved");
         }
         ServiceOffering service = new ServiceOffering();
+        service.setProvider(provider);
+        service.setCategory(category.findById(request.categoryId()).orElseThrow(()->new InformationNotFoundException("Category not found")));
         service.setName(request.name());
         service.setDescription(request.description());
         service.setPrice(request.price());
