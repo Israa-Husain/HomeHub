@@ -3,6 +3,7 @@ package com.ga.HomeHub.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -37,5 +38,34 @@ public class ApiExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     ResponseEntity<ApiError> badRequest(Exception e, HttpServletRequest r) {
         return out(HttpStatus.BAD_REQUEST, e, r);
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiError> validation(
+            MethodArgumentNotValidException e,
+            HttpServletRequest request) {
+
+        String message = e.getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .findFirst()
+                .orElse("Invalid request");
+
+        return out(HttpStatus.BAD_REQUEST,
+                new IllegalArgumentException(message),
+                request);
+    }
+
+    @ExceptionHandler(Exception.class)
+    ResponseEntity<ApiError> internalError(
+            Exception e,
+            HttpServletRequest request) {
+
+        return out(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                new RuntimeException("An unexpected error occurred"),
+                request
+        );
     }
 }
