@@ -14,12 +14,16 @@ import org.springframework.stereotype.Service;
 @AllArgsConstructor
 public class CategoryService {
     private final CategoryRepository repository;
+    private final CurrentUserService current;
+    private final AuditLogService audit;
 
     public Category createCategory(CategoryRequest request){
         Category category = new Category();
         category.setName(request.name());
         category.setDescription(request.description());
-        return repository.save(category);
+        Category savedCategory = repository.save(category);
+        audit.record(current.getCurrentUser(), "Create Category", "Category",                savedCategory.getId(), "Admin Created Category " + savedCategory.getName());
+        return savedCategory;
     }
 
     public Page<Category> getAllCategories(Pageable p){
@@ -34,12 +38,15 @@ public class CategoryService {
         Category category = getCategoryById(id);
         category.setName(request.name());
         category.setDescription(request.description());
-        return repository.save(category);
+        Category savedCategory = repository.save(category);
+        audit.record(current.getCurrentUser(), "Update Category", "Category", savedCategory.getId(), "Admin Updated Category " + savedCategory.getName());
+        return savedCategory;
     }
 
     public void deleteCategory(Long id){
         Category category = getCategoryById(id);
         category.setStatus(CategoryStatus.INACTIVE);
         repository.save(category);
+        audit.record(current.getCurrentUser(), "Deactivate Category", "Category", category.getId(), "Admin Deactivated Category " + category.getName());
     }
 }
