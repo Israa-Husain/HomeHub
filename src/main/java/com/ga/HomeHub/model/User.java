@@ -1,5 +1,6 @@
 package com.ga.HomeHub.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.ga.HomeHub.model.enums.Role;
 import com.ga.HomeHub.model.enums.UserStatus;
 import jakarta.persistence.*;
@@ -22,6 +23,7 @@ public class User extends BaseEntity{
     @Column(nullable=false, unique = true)
     private String emailAddress;
 
+    @JsonIgnore
     @Column(nullable=false)
     private String passwordHash;
 
