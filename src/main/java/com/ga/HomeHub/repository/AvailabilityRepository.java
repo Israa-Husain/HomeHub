@@ -9,5 +9,5 @@ import java.util.List;
 
 @Repository
 public interface AvailabilityRepository extends JpaRepository<Availability, Long> {
-    List<Availability> findByProviderIdAndDate(Long providerId, LocalDate date);
+    List<Availability> findByProviderIdAndDateAndIsAvailableTrue(Long providerId, LocalDate date);
 }

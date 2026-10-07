@@ -32,7 +32,7 @@ public class AvailabilityService {
     }
 
     public List<Availability> getProviderAvailabilityByDate(Long providerId, LocalDate date){
-        return repository.findByProviderIdAndDate(providerId,date);
+        return repository.findByProviderIdAndDateAndIsAvailableTrue(providerId,date);
     }
 
     public void deleteAvailability(Long id){
@@ -40,6 +40,7 @@ public class AvailabilityService {
         if(!availability.getProvider().getId().equals(providers.getCurrentProviderProfile().getId())){
             throw new UnauthorizedException("Not your availability");
         }
-        repository.delete(availability);
+        availability.setAvailable(false);
+        repository.save(availability);
     }
 }
