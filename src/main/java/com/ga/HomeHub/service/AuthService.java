@@ -28,6 +28,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +41,8 @@ public class AuthService {
     private final AuthenticationManager auth;
     private final EmailService email;
     private final JWTUtils jwt;
+
+    private final Logger logger = Logger.getLogger(AuthService.class.getName());
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -99,19 +103,24 @@ public class AuthService {
     public LoginResponse loginUser(LoginRequest request){
         User user = users.findUserByEmailAddress(request.email().toLowerCase());
         if(user == null){
+            logger.log(Level.WARNING,"Login failed: invalid credentials");
             throw new AuthenticationFailedException("Invalid credentials");
         }
         if(user.getStatus() != UserStatus.ACTIVE){
+            logger.log(Level.WARNING,"Login failed: Inactive Account");
             throw new UnauthorizedException("Inactive Account");
         }
         if(!user.isEmailVerified()){
+            logger.log(Level.WARNING,"Login failed: email not verify");
             throw new UnauthorizedException("Verify email before login");
         }
         try{
             auth.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
         } catch (AuthenticationException e){
+            logger.log(Level.WARNING,"Failed login: Invalid credentials");
             throw new AuthenticationFailedException("Invalid credentials");
         }
+        logger.log(Level.INFO,"Login success");
         MyUserDetails userDetails = new MyUserDetails(user);
         return new LoginResponse(jwt.generateJwtToken(userDetails));
     }
