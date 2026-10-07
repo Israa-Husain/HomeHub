@@ -123,6 +123,7 @@ public class BookingService {
 
         booking.setStatus(newStatus);
         repository.save(booking);
+        audit.record(user,"Update Booking status","Booking", booking.getId(),"Booking status changed to "+newStatus);
         sendBookingNotification(booking, "Booking status changed to "+newStatus);
         return booking;
     }
