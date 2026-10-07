@@ -4,6 +4,7 @@ import com.ga.HomeHub.dto.auth.ChangePasswordRequest;
 import com.ga.HomeHub.dto.user.UpdateUserRequest;
 import com.ga.HomeHub.dto.user.UserResponse;
 import com.ga.HomeHub.service.UserService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -24,12 +25,12 @@ public class UserController {
     }
 
     @PutMapping("/profile")
-    public UserResponse updateUserProfile(@RequestBody UpdateUserRequest request){
+    public UserResponse updateUserProfile(@Valid @RequestBody UpdateUserRequest request){
         return userService.update(request);
     }
 
     @PutMapping("/change-password")
-    public ResponseEntity<Void> changePassword(@RequestBody ChangePasswordRequest request){
+    public ResponseEntity<Void> changePassword(@Valid @RequestBody ChangePasswordRequest request){
         userService.changePassword(request);
         return ResponseEntity.noContent().build(); //Status: 204 No Content, Body:(empty)
     }

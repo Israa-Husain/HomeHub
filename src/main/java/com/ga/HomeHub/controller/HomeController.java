@@ -3,6 +3,7 @@ package com.ga.HomeHub.controller;
 import com.ga.HomeHub.dto.HomeRequest;
 import com.ga.HomeHub.model.Home;
 import com.ga.HomeHub.service.HomeService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -19,7 +20,7 @@ public class HomeController {
 
     @PostMapping
     @PreAuthorize("hasRole('HOMEOWNER')")
-    public ResponseEntity<Home> createHome(@RequestBody HomeRequest request){
+    public ResponseEntity<Home> createHome(@Valid @RequestBody HomeRequest request){
         return ResponseEntity.status(201).body(homeService.createHome(request));
     }
 
@@ -37,7 +38,7 @@ public class HomeController {
 
     @PutMapping("/{homeId}")
     @PreAuthorize("hasRole('HOMEOWNER')")
-    public Home updateHome(@PathVariable Long homeId, @RequestBody HomeRequest request){
+    public Home updateHome(@PathVariable Long homeId, @Valid @RequestBody HomeRequest request){
         return homeService.updateHome(homeId, request);
     }
 

@@ -2,6 +2,7 @@ package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.dto.auth.*;
 import com.ga.HomeHub.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,7 +16,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody RegisterRequest request){
+    public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request){
         authService.registerUser(request);
         return ResponseEntity.status(201).body(Map.of("message","Registration success. Verify your email."));
     }
@@ -27,18 +28,18 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest request){
+    public LoginResponse login(@Valid @RequestBody LoginRequest request){
         return authService.loginUser(request);
     }
 
     @PostMapping("/forgot-password")
-    public Map<String,String> forgot(@RequestBody ForgotPasswordRequest request){
+    public Map<String,String> forgot(@Valid @RequestBody ForgotPasswordRequest request){
         authService.requestPasswordReset(request.email());
         return Map.of("message","Sent reset if the account exist");
     }
 
     @PostMapping("/reset-password")
-    public Map<String,String> reset(@RequestBody ResetPasswordRequest request){
+    public Map<String,String> reset(@Valid @RequestBody ResetPasswordRequest request){
         authService.resetPassword(request);
         return Map.of("message","Password reset successful");
     }

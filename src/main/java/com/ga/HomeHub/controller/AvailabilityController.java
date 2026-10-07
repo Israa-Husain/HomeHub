@@ -3,6 +3,7 @@ package com.ga.HomeHub.controller;
 import com.ga.HomeHub.dto.AvailabilityRequest;
 import com.ga.HomeHub.model.Availability;
 import com.ga.HomeHub.service.AvailabilityService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +26,7 @@ public class AvailabilityController {
 
     @PostMapping
     @PreAuthorize("hasRole('PROVIDER')")
-    public ResponseEntity<Availability> createAvailability(@RequestBody AvailabilityRequest request){
+    public ResponseEntity<Availability> createAvailability(@Valid @RequestBody AvailabilityRequest request){
         return ResponseEntity.status(201).body(availabilityService.createAvailability(request));
     }
 

@@ -5,6 +5,7 @@ import com.ga.HomeHub.dto.BookingStatusRequest;
 import com.ga.HomeHub.model.Booking;
 import com.ga.HomeHub.model.enums.BookingStatus;
 import com.ga.HomeHub.service.BookingService;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,7 +21,7 @@ public class BookingController {
 
     @PostMapping
     @PreAuthorize("hasRole('HOMEOWNER')")
-    public ResponseEntity<Booking> createBooking(@RequestBody BookingRequest request){
+    public ResponseEntity<Booking> createBooking(@Valid @RequestBody BookingRequest request){
         return ResponseEntity.status(201).body(bookingService.createBooking(request));
     }
 
@@ -36,7 +37,7 @@ public class BookingController {
 
     @PutMapping("/{bookingId}/status")
     @PreAuthorize("hasAnyRole('ADMIN','PROVIDER')")
-    public Booking updateBookingStatus(@PathVariable Long bookingId, @RequestBody BookingStatusRequest request){
+    public Booking updateBookingStatus(@PathVariable Long bookingId, @Valid @RequestBody BookingStatusRequest request){
         return bookingService.updateBookingStatus(bookingId,request.status());
     }
 }
