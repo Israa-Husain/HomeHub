@@ -44,6 +44,7 @@ public class UserService {
         user.setPhoneNumber(updateUserRequest.phoneNumber());
 
         userRepository.save(user);
+        auditLogService.record(user,"Update profile","User", user.getId(), "User Updated Profile");
         return UserResponse.from(user);
     }
 
@@ -72,6 +73,7 @@ public class UserService {
             Files.copy(file.getInputStream(), dir.resolve(name), StandardCopyOption.REPLACE_EXISTING);
             u.setProfilePictureUrl("/uploads/" + name);
             userRepository.save(u);
+            auditLogService.record(u,"Update Profile Picture","User", u.getId(), "User Updated Profile Picture");
             return u.getProfilePictureUrl();
         } catch (IOException e) {
             throw new RuntimeException("Could not store file");
