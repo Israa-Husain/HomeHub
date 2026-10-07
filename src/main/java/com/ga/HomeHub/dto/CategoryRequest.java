@@ -1,4 +1,6 @@
 package com.ga.HomeHub.dto;
 
-public record CategoryRequest(String name, String description) {
+import jakarta.validation.constraints.NotBlank;
+
+public record CategoryRequest(@NotBlank String name, String description) {
 }

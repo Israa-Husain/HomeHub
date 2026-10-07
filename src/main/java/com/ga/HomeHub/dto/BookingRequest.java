@@ -1,7 +1,9 @@
 package com.ga.HomeHub.dto;
 
+import jakarta.validation.constraints.NotNull;
+
 import java.time.LocalDate;
 import java.time.LocalTime;
 
-public record BookingRequest(Long homeId, Long serviceId, LocalDate bookingDate, LocalTime startTime, String note) {
+public record BookingRequest(@NotNull Long homeId, @NotNull Long serviceId, @NotNull LocalDate bookingDate, @NotNull LocalTime startTime, String note) {
 }

@@ -1,4 +1,7 @@
 package com.ga.HomeHub.dto;
 
-public record ServiceRequest(Long categoryId, String name, String description, Double price, Integer durationMinutes) {
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
+public record ServiceRequest(@NotNull Long categoryId, @NotBlank String name, String description, @NotNull Double price, @NotNull Integer durationMinutes) {
 }

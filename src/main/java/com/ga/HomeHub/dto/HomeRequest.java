@@ -1,4 +1,6 @@
 package com.ga.HomeHub.dto;
 
-public record HomeRequest(String name, String city, String address) {
+import jakarta.validation.constraints.NotBlank;
+
+public record HomeRequest(@NotBlank String name, @NotBlank String city, @NotBlank String address) {
 }

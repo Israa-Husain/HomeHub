@@ -1,4 +1,11 @@
 package com.ga.HomeHub.dto.auth;
 
-public record ResetPasswordRequest(String token, String newPassword) {
-}
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
+public record ResetPasswordRequest(
+        @NotBlank
+        String token,
+        @NotBlank
+        @Size(min = 8)
+        String newPassword) { }

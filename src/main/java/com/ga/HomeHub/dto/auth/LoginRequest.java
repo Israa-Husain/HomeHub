@@ -1,4 +1,7 @@
 package com.ga.HomeHub.dto.auth;
 
-public record LoginRequest(String email, String password) {
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+
+public record LoginRequest(@Email @NotBlank String email, @NotBlank String password) {
 }

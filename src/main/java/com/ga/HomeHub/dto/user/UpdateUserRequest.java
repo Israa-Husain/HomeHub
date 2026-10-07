@@ -1,4 +1,6 @@
 package com.ga.HomeHub.dto.user;
 
-public record UpdateUserRequest(String firstName, String lastName, String phoneNumber) {
+import jakarta.validation.constraints.NotBlank;
+
+public record UpdateUserRequest(@NotBlank String firstName, @NotBlank String lastName, String phoneNumber) {
 }

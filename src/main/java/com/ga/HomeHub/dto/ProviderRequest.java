@@ -1,4 +1,6 @@
 package com.ga.HomeHub.dto;
 
-public record ProviderRequest(String businessName, String description) {
+import jakarta.validation.constraints.NotBlank;
+
+public record ProviderRequest(@NotBlank String businessName, String description) {
 }
