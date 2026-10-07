@@ -18,6 +18,8 @@ public class ProviderService {
 
     private final ProviderProfileRepository repository;
     private final CurrentUserService current;
+    private final AuditLogService audit;
+
 
     public ProviderProfile createProviderProfile(ProviderRequest request){
         User user = current.getCurrentUser();
@@ -31,7 +33,11 @@ public class ProviderService {
         provider.setUser(user);
         provider.setBusinessName(request.businessName());
         provider.setDescription(request.description());
-        return repository.save(provider);
+
+        ProviderProfile savedProvider = repository.save(provider);
+        audit.record(user, "Create Provider Profile", "ProviderProfile", savedProvider.getId(), "Provider created profile");
+
+        return savedProvider;
     }
 
     public ProviderProfile getCurrentProviderProfile(){
@@ -41,7 +47,9 @@ public class ProviderService {
     public ProviderProfile updateProviderStatus(Long id){
         ProviderProfile provider = repository.findById(id).orElseThrow(()-> new InformationNotFoundException("Provider not found"));
         provider.setProviderStatus(ProviderStatus.APPROVED);
-        return repository.save(provider);
+        ProviderProfile savedProvider = repository.save(provider);
+        audit.record(current.getCurrentUser(), "Approve Provider", "ProviderProfile", savedProvider.getId(), "Admin approved provider");
+        return savedProvider;
     }
 
 }
