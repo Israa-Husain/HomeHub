@@ -20,6 +20,7 @@ public class ServiceOfferingService {
     private final ServiceOfferingRepository repository;
     private final CategoryRepository category;
     private final ProviderService providers;
+    private final AuditLogService audit;
 
     public ServiceOffering createServiceOffering(ServiceRequest request){
         ProviderProfile provider = providers.getCurrentProviderProfile();
@@ -33,7 +34,9 @@ public class ServiceOfferingService {
         service.setDescription(request.description());
         service.setPrice(request.price());
         service.setDurationMinutes(request.durationMinutes());
-        return repository.save(service);
+        ServiceOffering savedService = repository.save(service);
+        audit.record(provider.getUser(), "Create Service", "ServiceOffering", savedService.getId(), "Provider created service " + savedService.getName());
+        return savedService;
     }
 
     public Page<ServiceOffering> getAllServiceOffering(Long categoryId, Pageable p){
@@ -54,7 +57,9 @@ public class ServiceOfferingService {
         service.setDescription(request.description());
         service.setPrice(request.price());
         service.setDurationMinutes(request.durationMinutes());
-        return repository.save(service);
+        ServiceOffering savedService = repository.save(service);
+        audit.record(service.getProvider().getUser(), "Update Service", "ServiceOffering", savedService.getId(), "Provider Updated Service " + savedService.getName());
+        return savedService;
     }
 
     public void deactivateServiceOffering(Long id){
@@ -64,5 +69,6 @@ public class ServiceOfferingService {
         }
         service.setStatus(ServiceStatus.INACTIVE);
         repository.save(service);
+        audit.record(service.getProvider().getUser(), "Deactivate Service", "ServiceOffering", service.getId(), "Provider Deactivated Service " + service.getName());
     }
 }
