@@ -4,6 +4,7 @@ import com.ga.HomeHub.dto.auth.LoginRequest;
 import com.ga.HomeHub.dto.auth.LoginResponse;
 import com.ga.HomeHub.dto.auth.RegisterRequest;
 import com.ga.HomeHub.dto.auth.ResetPasswordRequest;
+import com.ga.HomeHub.exception.AuthenticationFailedException;
 import com.ga.HomeHub.exception.InformationExistException;
 import com.ga.HomeHub.exception.InformationNotFoundException;
 import com.ga.HomeHub.exception.UnauthorizedException;
@@ -98,7 +99,7 @@ public class AuthService {
     public LoginResponse loginUser(LoginRequest request){
         User user = users.findUserByEmailAddress(request.email().toLowerCase());
         if(user == null){
-            throw new UnauthorizedException("Invalid credentials");
+            throw new AuthenticationFailedException("Invalid credentials");
         }
         if(user.getStatus() != UserStatus.ACTIVE){
             throw new UnauthorizedException("Inactive Account");
@@ -109,7 +110,7 @@ public class AuthService {
         try{
             auth.authenticate(new UsernamePasswordAuthenticationToken(request.email(), request.password()));
         } catch (AuthenticationException e){
-            throw new UnauthorizedException("Invalid credentials");
+            throw new AuthenticationFailedException("Invalid credentials");
         }
         MyUserDetails userDetails = new MyUserDetails(user);
         return new LoginResponse(jwt.generateJwtToken(userDetails));

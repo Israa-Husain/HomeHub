@@ -30,6 +30,11 @@ public class ApiExceptionHandler {
         return out(HttpStatus.FORBIDDEN, e, r);
     }
 
+    @ExceptionHandler(AuthenticationFailedException.class)
+    ResponseEntity<ApiError> unauthorized(Exception e, HttpServletRequest r) {
+        return out(HttpStatus.UNAUTHORIZED, e, r);
+    }
+
     @ExceptionHandler({BookingConflictException.class, InvalidBookingStatusException.class})
     ResponseEntity<ApiError> booking(Exception e, HttpServletRequest r) {
         return out(HttpStatus.UNPROCESSABLE_ENTITY, e, r);
@@ -68,4 +73,6 @@ public class ApiExceptionHandler {
                 request
         );
     }
+
+
 }
