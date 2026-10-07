@@ -30,7 +30,7 @@ public class AvailabilityController {
         return ResponseEntity.status(201).body(availabilityService.createAvailability(request));
     }
 
-    @DeleteMapping
+    @DeleteMapping("/{availabilityId}")
     @PreAuthorize("hasRole('PROVIDER')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deleteAvailability(@PathVariable Long availabilityId){
