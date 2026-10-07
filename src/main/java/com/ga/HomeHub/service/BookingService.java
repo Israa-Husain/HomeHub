@@ -74,21 +74,42 @@ public class BookingService {
         booking = repository.save(booking);
 
         audit.record(user,"Create Booking","Booking", booking.getId(), "User created booking");
-
+        sendProviderNotification(booking, "You received a new booking");
         return booking;
     }
 
     public Page<Booking> getCurrentUserBookings(BookingStatus status, Pageable p){
-        Long id = current.getCurrentUser().getId();
-        return status == null? repository.findByCustomerId(id,p) : repository.findByCustomerIdAndStatus(id, status, p);
+//        Long id = current.getCurrentUser().getId();
+//        return status == null? repository.findByCustomerId(id,p) : repository.findByCustomerIdAndStatus(id, status, p);
+
+        User user = current.getCurrentUser();
+
+        if(user.getRole() == Role.PROVIDER){
+            if (status == null) {
+                return repository.findByServiceProviderUserId(user.getId(), p);
+            }
+            return repository.findByServiceProviderUserIdAndStatus(user.getId(), status, p);
+        }
+
+        if(status == null){
+            return repository.findByCustomerId(user.getId(), p);
+        }
+        return repository.findByCustomerIdAndStatus(user.getId(), status, p);
     }
 
     public Booking getBookingById(Long id){
-        return repository.findById(id).orElseThrow(()->new InformationNotFoundException("Booking not found"));
+        Booking booking = findBookingById(id);
+        User user = current.getCurrentUser();
+        boolean homeowner = booking.getCustomer().getId().equals(user.getId());
+        boolean provider = booking.getService().getProvider().getUser().getId().equals(user.getId());
+        if(!homeowner && !provider && user.getRole() != Role.ADMIN){
+            throw new UnauthorizedException("You can not view this booking");
+        }
+        return booking;
     }
 
     public Booking cancelBooking(Long id){
-        Booking booking = getBookingById(id);
+        Booking booking = findBookingById(id);
         User user = current.getCurrentUser();
         if(!booking.getCustomer().getId().equals(user.getId()) && user.getRole() != Role.ADMIN){
             throw new UnauthorizedException("Not your booking");
@@ -102,13 +123,13 @@ public class BookingService {
 
         booking.setStatus(BookingStatus.CANCELLED);
         repository.save(booking);
-        sendBookingNotification(booking, "Booking cancelled");
+        sendProviderNotification(booking, "Booking cancelled");
         audit.record(user, "Cancel Booking","Booking", booking.getId(), "Booking cancelled");
         return booking;
     }
 
     public Booking updateBookingStatus(Long id, BookingStatus newStatus){
-        Booking booking = getBookingById(id);
+        Booking booking = findBookingById(id);
         User user = current.getCurrentUser();
         boolean provider = booking.getService().getProvider().getUser().getId().equals(user.getId());
         BookingStatus oldStatus = booking.getStatus();
@@ -118,7 +139,7 @@ public class BookingService {
             throw new UnauthorizedException("Provider or admin required");
         }
         if(!isAvailable){
-            throw new InvalidBookingStatusException("Invalid booking status transaction: "+oldStatus+" -> "+newStatus);
+            throw new InvalidBookingStatusException("Invalid booking status transition: "+oldStatus+" -> "+newStatus);
         }
 
         booking.setStatus(newStatus);
@@ -131,5 +152,18 @@ public class BookingService {
     private void sendBookingNotification(Booking booking, String message){
         notification.sendNotifications(booking.getCustomer().getId(), message+" (#"+booking.getId()+")");
         email.sendEmail(booking.getCustomer().getEmailAddress(), "HomeHub booking update", message+" for booking #"+booking.getId());
+    }
+
+    private void sendProviderNotification(Booking booking, String message) {
+
+        User providerUser = booking.getService().getProvider().getUser();
+
+        notification.sendNotifications(providerUser.getId(), message + " (#" + booking.getId() + ")");
+
+        email.sendEmail(providerUser.getEmailAddress(), "HomeHub new booking", message + " for booking #" + booking.getId());
+    }
+
+    private Booking findBookingById(Long id) {
+        return repository.findById(id).orElseThrow(() -> new InformationNotFoundException("Booking not found"));
     }
 }
