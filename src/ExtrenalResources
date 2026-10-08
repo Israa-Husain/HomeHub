@@ -17,3 +17,6 @@ https://medium.com/javaguides/spring-boot-restcontrolleradvice-annotation-comple
 Restricting access based on roles, ensuring only authenticated users can access certain methods.
 https://www.geeksforgeeks.org/advance-java/spring-security-preauthorize-annotation-for-method-security/
 
+CommandLineRunner:
+https://docs.spring.io/spring-boot/api/java/org/springframework/boot/CommandLineRunner.html
+
