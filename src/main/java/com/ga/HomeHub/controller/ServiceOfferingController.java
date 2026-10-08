@@ -46,4 +46,15 @@ public class ServiceOfferingController {
     public void deactivateServiceOffering(@PathVariable Long serviceId){
         serviceOfferingService.deactivateServiceOffering(serviceId);
     }
+
+    @GetMapping("/search")
+    public Page<ServiceOffering> searchServices(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Double minPrice,
+            @RequestParam(required = false) Double maxPrice,
+            Pageable pageable){
+
+        return serviceOfferingService.searchServices(name, categoryId, minPrice, maxPrice, pageable);
+    }
 }

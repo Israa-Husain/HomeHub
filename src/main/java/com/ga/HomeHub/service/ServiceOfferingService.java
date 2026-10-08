@@ -47,6 +47,20 @@ public class ServiceOfferingService {
         return repository.findById(id).orElseThrow(()-> new InformationNotFoundException("Service not found"));
     }
 
+    public Page<ServiceOffering> searchServices(String name, Long categoryId, Double minPrice, Double maxPrice, Pageable pageable){
+        if(minPrice != null && minPrice < 0){
+            throw new IllegalArgumentException("Minimum price cannot be negative");
+        }
+        if(maxPrice != null && maxPrice < 0){
+            throw new IllegalArgumentException("Maximum price cannot be negative");
+        }
+        if(minPrice != null && maxPrice != null && minPrice > maxPrice){
+            throw new IllegalArgumentException("Minimum price cannot exceed maximum price");
+        }
+
+        return repository.searchServices(name, categoryId, minPrice, maxPrice, ServiceStatus.ACTIVE, pageable);
+    }
+
     public ServiceOffering updateServiceOffering(Long id, ServiceRequest request){
         ServiceOffering service = getServiceOfferingById(id);
         if(!service.getProvider().getId().equals(providers.getCurrentProviderProfile().getId())){
