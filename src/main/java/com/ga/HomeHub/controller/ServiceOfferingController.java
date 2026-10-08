@@ -1,6 +1,7 @@
 package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.dto.ServiceRequest;
+import com.ga.HomeHub.dto.ServiceResponse;
 import com.ga.HomeHub.model.ServiceOffering;
 import com.ga.HomeHub.service.ServiceOfferingService;
 import jakarta.validation.Valid;
@@ -19,25 +20,27 @@ public class ServiceOfferingController {
     private final ServiceOfferingService serviceOfferingService;
 
     @GetMapping
-    public Page<ServiceOffering> getAllServiceOffering(@RequestParam(required = false) Long categoryId, Pageable pageable){
+    public Page<ServiceResponse> getAllServiceOffering(@RequestParam(required = false) Long categoryId, Pageable pageable){
         return serviceOfferingService.getAllServiceOffering(categoryId, pageable);
     }
 
     @GetMapping("/{serviceId}")
-    public ServiceOffering getServiceOfferingById(@PathVariable Long serviceId){
-        return serviceOfferingService.getServiceOfferingById(serviceId);
+    public ServiceResponse getServiceOfferingById(@PathVariable Long serviceId){
+        return serviceOfferingService.getServiceResponseById(serviceId);
     }
 
     @PostMapping
     @PreAuthorize("hasRole('PROVIDER')")
-    public ResponseEntity<ServiceOffering> createServiceOffering(@Valid @RequestBody ServiceRequest request){
-        return ResponseEntity.status(201).body(serviceOfferingService.createServiceOffering(request));
+    public ResponseEntity<ServiceResponse> createServiceOffering(@Valid @RequestBody ServiceRequest request){
+        ServiceOffering service = serviceOfferingService.createServiceOffering(request);
+        return ResponseEntity.status(201).body(serviceOfferingService.toResponse(service));
     }
 
     @PutMapping("/{serviceId}")
     @PreAuthorize("hasRole('PROVIDER')")
-    public ServiceOffering updateServiceOffering(@PathVariable Long serviceId, @Valid @RequestBody ServiceRequest request){
-        return serviceOfferingService.updateServiceOffering(serviceId,request);
+    public ServiceResponse updateServiceOffering(@PathVariable Long serviceId, @Valid @RequestBody ServiceRequest request){
+        ServiceOffering service = serviceOfferingService.updateServiceOffering(serviceId, request);
+        return serviceOfferingService.toResponse(service);
     }
 
     @DeleteMapping("/{serviceId}")
@@ -48,7 +51,7 @@ public class ServiceOfferingController {
     }
 
     @GetMapping("/search")
-    public Page<ServiceOffering> searchServices(
+    public Page<ServiceResponse> searchServices(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Double minPrice,

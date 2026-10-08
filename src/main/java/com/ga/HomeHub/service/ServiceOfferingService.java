@@ -1,6 +1,7 @@
 package com.ga.HomeHub.service;
 
 import com.ga.HomeHub.dto.ServiceRequest;
+import com.ga.HomeHub.dto.ServiceResponse;
 import com.ga.HomeHub.exception.InformationNotFoundException;
 import com.ga.HomeHub.exception.UnauthorizedException;
 import com.ga.HomeHub.model.ProviderProfile;
@@ -39,15 +40,22 @@ public class ServiceOfferingService {
         return savedService;
     }
 
-    public Page<ServiceOffering> getAllServiceOffering(Long categoryId, Pageable p){
-        return categoryId == null ? repository.findByStatus(ServiceStatus.ACTIVE,p) : repository.findByCategoryIdAndStatus(categoryId, ServiceStatus.ACTIVE, p);
+    public Page<ServiceResponse> getAllServiceOffering(Long categoryId, Pageable p){
+        Page<ServiceOffering> services = categoryId == null ? repository.findByStatus(ServiceStatus.ACTIVE, p) : repository.findByCategoryIdAndStatus(categoryId, ServiceStatus.ACTIVE, p);
+
+        return services.map(this::toResponse);
+//        return categoryId == null ? repository.findByStatus(ServiceStatus.ACTIVE,p) : repository.findByCategoryIdAndStatus(categoryId, ServiceStatus.ACTIVE, p);
+    }
+
+    public ServiceResponse getServiceResponseById(Long id) {
+        return toResponse(getServiceOfferingById(id));
     }
 
     public ServiceOffering getServiceOfferingById(Long id){
         return repository.findById(id).orElseThrow(()-> new InformationNotFoundException("Service not found"));
     }
 
-    public Page<ServiceOffering> searchServices(String name, Long categoryId, Double minPrice, Double maxPrice, Pageable pageable){
+    public Page<ServiceResponse> searchServices(String name, Long categoryId, Double minPrice, Double maxPrice, Pageable pageable){
         if(minPrice != null && minPrice < 0){
             throw new IllegalArgumentException("Minimum price cannot be negative");
         }
@@ -58,7 +66,7 @@ public class ServiceOfferingService {
             throw new IllegalArgumentException("Minimum price cannot exceed maximum price");
         }
 
-        return repository.searchServices(name, categoryId, minPrice, maxPrice, ServiceStatus.ACTIVE, pageable);
+        return repository.searchServices(name, categoryId, minPrice, maxPrice, ServiceStatus.ACTIVE, pageable).map(this::toResponse);
     }
 
     public ServiceOffering updateServiceOffering(Long id, ServiceRequest request){
@@ -84,5 +92,17 @@ public class ServiceOfferingService {
         service.setStatus(ServiceStatus.INACTIVE);
         repository.save(service);
         audit.record(service.getProvider().getUser(), "Deactivate Service", "ServiceOffering", service.getId(), "Provider Deactivated Service " + service.getName());
+    }
+
+    public ServiceResponse toResponse(ServiceOffering service) {
+        return new ServiceResponse(
+                service.getId(),
+                service.getName(),
+                service.getDescription(),
+                service.getPrice(),
+                service.getDurationMinutes(),
+                service.getCategory().getName(),
+                service.getProvider().getBusinessName()
+        );
     }
 }
