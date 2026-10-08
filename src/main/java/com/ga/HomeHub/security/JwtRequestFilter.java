@@ -37,13 +37,13 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             String jwt = parseJwt(request); //token
-            System.out.println("jwt: ==> " + jwt);
+            //System.out.println("jwt: ==> " + jwt);
             if (jwt != null && jwtUtils.validateJwtToken(jwt)) {
                 String emailAddress = jwtUtils.getUserNameFromJwtToken(jwt);
-                System.out.println("emailAddress: ==> " + emailAddress);
+                //System.out.println("emailAddress: ==> " + emailAddress);
 
                 UserDetails userDetails = this.myUserDetailsService.loadUserByUsername(emailAddress);
-                System.out.println("userDetails: ==> " + userDetails.getUsername());
+                //System.out.println("userDetails: ==> " + userDetails.getUsername());
 
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         userDetails, null, userDetails.getAuthorities());
