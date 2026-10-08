@@ -1,6 +1,7 @@
 package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.dto.ProviderRequest;
+import com.ga.HomeHub.dto.ProviderResponse;
 import com.ga.HomeHub.model.ProviderProfile;
 import com.ga.HomeHub.service.ProviderService;
 import jakarta.validation.Valid;
@@ -17,14 +18,15 @@ public class ProviderController {
 
     @PostMapping
     @PreAuthorize("hasRole('PROVIDER')")
-    public ResponseEntity<ProviderProfile> createProviderProfile(@Valid @RequestBody ProviderRequest request){
-        return ResponseEntity.status(201).body(providerService.createProviderProfile(request));
+    public ResponseEntity<ProviderResponse> createProviderProfile(@Valid @RequestBody ProviderRequest request){
+        ProviderProfile provider = providerService.createProviderProfile(request);
+        return ResponseEntity.status(201).body(providerService.toResponse(provider));
     }
 
     @GetMapping("/profile")
     @PreAuthorize("hasRole('PROVIDER')")
-    public ProviderProfile getCurrentProviderProfile(){
-        return providerService.getCurrentProviderProfile();
+    public ProviderResponse getCurrentProviderProfile(){
+        return providerService.toResponse(providerService.getCurrentProviderProfile());
     }
 
 }

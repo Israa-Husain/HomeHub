@@ -1,6 +1,7 @@
 package com.ga.HomeHub.service;
 
 import com.ga.HomeHub.dto.ProviderRequest;
+import com.ga.HomeHub.dto.ProviderResponse;
 import com.ga.HomeHub.exception.InformationExistException;
 import com.ga.HomeHub.exception.InformationNotFoundException;
 import com.ga.HomeHub.exception.UnauthorizedException;
@@ -54,6 +55,15 @@ public class ProviderService {
         logger.log(Level.INFO, "Admin approved provider");
         audit.record(current.getCurrentUser(), "Approve Provider", "ProviderProfile", savedProvider.getId(), "Admin approved provider");
         return savedProvider;
+    }
+
+    public ProviderResponse toResponse(ProviderProfile provider) {
+        return new ProviderResponse(
+                provider.getId(),
+                provider.getBusinessName(),
+                provider.getDescription(),
+                provider.getProviderStatus().name()
+        );
     }
 
 }
