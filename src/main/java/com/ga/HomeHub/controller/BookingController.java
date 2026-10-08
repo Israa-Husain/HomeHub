@@ -1,6 +1,7 @@
 package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.dto.BookingRequest;
+import com.ga.HomeHub.dto.BookingResponse;
 import com.ga.HomeHub.dto.BookingStatusRequest;
 import com.ga.HomeHub.model.Booking;
 import com.ga.HomeHub.model.enums.BookingStatus;
@@ -21,23 +22,29 @@ public class BookingController {
 
     @PostMapping
     @PreAuthorize("hasRole('HOMEOWNER')")
-    public ResponseEntity<Booking> createBooking(@Valid @RequestBody BookingRequest request){
-        return ResponseEntity.status(201).body(bookingService.createBooking(request));
+    public ResponseEntity<BookingResponse> createBooking(@Valid @RequestBody BookingRequest request){
+        Booking booking = bookingService.createBooking(request);
+        return ResponseEntity.status(201).body(bookingService.toResponse(booking));
     }
 
     @GetMapping
-    public Page<Booking> getCurrentUserBookings(@RequestParam(required = false)BookingStatus status, Pageable pageable){
-        return bookingService.getCurrentUserBookings(status, pageable);
+    public Page<BookingResponse> getCurrentUserBookings(@RequestParam(required = false)BookingStatus status, Pageable pageable){
+        return bookingService.getCurrentUserBookings(status, pageable).map(bookingService::toResponse);
+    }
+
+    @GetMapping("/{bookingId}")
+    public BookingResponse getBookingById(@PathVariable Long bookingId) {
+        return bookingService.toResponse(bookingService.getBookingById(bookingId));
     }
 
     @DeleteMapping("/{bookingId}")
-    public Booking cancelBooking(@PathVariable Long bookingId){
-        return bookingService.cancelBooking(bookingId);
+    public BookingResponse cancelBooking(@PathVariable Long bookingId){
+        return bookingService.toResponse(bookingService.cancelBooking(bookingId));
     }
 
     @PutMapping("/{bookingId}/status")
     @PreAuthorize("hasAnyRole('ADMIN','PROVIDER')")
-    public Booking updateBookingStatus(@PathVariable Long bookingId, @Valid @RequestBody BookingStatusRequest request){
-        return bookingService.updateBookingStatus(bookingId,request.status());
+    public BookingResponse updateBookingStatus(@PathVariable Long bookingId, @Valid @RequestBody BookingStatusRequest request){
+        return bookingService.toResponse(bookingService.updateBookingStatus(bookingId, request.status()));
     }
 }

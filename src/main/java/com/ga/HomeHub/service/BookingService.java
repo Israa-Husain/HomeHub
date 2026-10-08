@@ -1,6 +1,7 @@
 package com.ga.HomeHub.service;
 
 import com.ga.HomeHub.dto.BookingRequest;
+import com.ga.HomeHub.dto.BookingResponse;
 import com.ga.HomeHub.exception.BookingConflictException;
 import com.ga.HomeHub.exception.InformationNotFoundException;
 import com.ga.HomeHub.exception.InvalidBookingStatusException;
@@ -173,5 +174,20 @@ public class BookingService {
 
     private Booking findBookingById(Long id) {
         return repository.findById(id).orElseThrow(() -> new InformationNotFoundException("Booking not found"));
+    }
+
+    public BookingResponse toResponse(Booking booking) {
+        return new BookingResponse(
+                booking.getId(),
+                booking.getHome().getId(),
+                booking.getService().getId(),
+                booking.getService().getName(),
+                booking.getService().getProvider().getBusinessName(),
+                booking.getBookingDate(),
+                booking.getStartTime(),
+                booking.getEndTime(),
+                booking.getStatus(),
+                booking.getNote()
+        );
     }
 }
