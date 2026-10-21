@@ -22,6 +22,11 @@ public class ProviderProfile extends BaseEntity{
     @Column
     private String description;
 
+    @Column(length=3000)
+    private String portfolioDescription;
+
+    private boolean emergencyEnabled=false;
+
     @Enumerated(EnumType.STRING)
     private ProviderStatus providerStatus = ProviderStatus.PENDING;
 
