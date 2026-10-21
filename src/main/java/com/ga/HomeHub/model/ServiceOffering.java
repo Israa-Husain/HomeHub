@@ -31,6 +31,8 @@ public class ServiceOffering extends BaseEntity{
     @Column(nullable=false)
     private Double price;
 
+    private boolean emergencyEnabled=false;
+
     @Enumerated(EnumType.STRING)
     private ServiceStatus status = ServiceStatus.ACTIVE;
 
