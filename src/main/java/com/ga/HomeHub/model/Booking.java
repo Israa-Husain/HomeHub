@@ -1,10 +1,12 @@
 package com.ga.HomeHub.model;
 
 import com.ga.HomeHub.model.enums.BookingStatus;
+import com.ga.HomeHub.model.enums.BookingType;
 import jakarta.persistence.*;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 @Entity
@@ -36,6 +38,21 @@ public class Booking extends BaseEntity{
 
     @Enumerated(EnumType.STRING)
     private BookingStatus status = BookingStatus.PENDING;
+
+    @Enumerated(EnumType.STRING) private BookingType bookingType=BookingType.NORMAL;
+    private Double finalPrice;
+
+    private LocalDateTime responseDeadline;
+
+    private LocalDateTime reportDeadline;
+
+    private boolean lateCancellation=false;
+
+    private boolean reminder24Sent=false;
+
+    private boolean reminder1Sent=false;
+
+    private boolean reportOverdueNotified=false;
 
     @Column
     private String note;
