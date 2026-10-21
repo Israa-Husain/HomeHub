@@ -10,4 +10,5 @@ import java.util.List;
 @Repository
 public interface AvailabilityRepository extends JpaRepository<Availability, Long> {
     List<Availability> findByProviderIdAndDateAndIsAvailableTrue(Long providerId, LocalDate date);
+    List<Availability> findByProviderIdAndDateAndTimeOffTrue(Long providerId,LocalDate date);
 }
