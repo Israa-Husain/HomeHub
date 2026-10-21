@@ -34,4 +34,6 @@ public class Availability extends BaseEntity{
         return isAvailable&&!start.isBefore(startTime)&&!end.isAfter(endTime);
     }
 
+    private boolean timeOff = false;
+
 }
