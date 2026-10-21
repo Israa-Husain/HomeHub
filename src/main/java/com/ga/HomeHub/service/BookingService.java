@@ -10,20 +10,15 @@ import com.ga.HomeHub.model.Booking;
 import com.ga.HomeHub.model.Home;
 import com.ga.HomeHub.model.ServiceOffering;
 import com.ga.HomeHub.model.User;
-import com.ga.HomeHub.model.enums.BookingStatus;
-import com.ga.HomeHub.model.enums.ProviderStatus;
-import com.ga.HomeHub.model.enums.Role;
-import com.ga.HomeHub.model.enums.ServiceStatus;
-import com.ga.HomeHub.repository.AvailabilityRepository;
-import com.ga.HomeHub.repository.BookingRepository;
-import com.ga.HomeHub.repository.HomeRopository;
-import com.ga.HomeHub.repository.ServiceOfferingRepository;
+import com.ga.HomeHub.model.enums.*;
+import com.ga.HomeHub.repository.*;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 
@@ -42,13 +37,41 @@ public class BookingService {
     private final NotificationService notification;
     private final EmailService email;
 
+    private final ProviderProfileRepository providerLocks;
+
+    private final ServiceReportRepository reports;
     private final Logger logger = Logger.getLogger(BookingService.class.getName());
 
     public Booking createBooking(BookingRequest request){
         User user = current.getCurrentUser();
         Home home = homes.findById(request.homeId()).orElseThrow(()-> new InformationNotFoundException("Home not found"));
         ServiceOffering service = services.findById(request.serviceId()).orElseThrow(()-> new InformationNotFoundException("Service not found"));
+
+        providerLocks.lockById(request.homeId()).orElseThrow(()-> new InformationNotFoundException("Provider not found"));
+        LocalDateTime startsAt = LocalDateTime.of(request.bookingDate(), request.startTime());
         LocalTime endTime = request.startTime().plusMinutes(service.getDurationMinutes());
+        BookingType type = request.bookingType()==null? BookingType.NORMAL : request.bookingType();
+        if(!startsAt.isAfter(LocalDateTime.now())){
+            throw new BookingConflictException("can not book a past appointment");
+        }
+        if(type==BookingType.NORMAL && startsAt.isBefore(LocalDateTime.now().plusHours(24))){
+            throw new BookingConflictException("Normal bookings require at least 24 hours notice");
+        }
+        if(type==BookingType.EMERGENCY && (!service.isEmergencyEnabled() || !service.getProvider().isEmergencyEnabled())){
+            throw new BookingConflictException("Emergency booking is not enabled for this provider and service");
+        }
+        if(!home.isActive()){
+            throw new BookingConflictException("Inactive homes cannot be booked");
+        }
+        if(!endTime.isAfter(request.startTime())) {
+            throw new BookingConflictException("Service must end on the same day");
+        }
+
+        boolean blocked = availability.findByProviderIdAndDateAndTimeOffTrue(service.getProvider().getId(),request.bookingDate()).stream().anyMatch(a->request.startTime().isBefore(a.getEndTime()) && endTime.isAfter(a.getStartTime()));
+        if(blocked){
+            throw new BookingConflictException("Provider is not available");
+        }
+
         boolean slot = availability.findByProviderIdAndDateAndIsAvailableTrue(service.getProvider().getId(), request.bookingDate()).stream().anyMatch(a->a.contains(request.startTime(), endTime));
         boolean clash = repository.findByServiceProviderIdAndBookingDateAndStatusIn(service.getProvider().getId(), request.bookingDate(), List.of(BookingStatus.PENDING, BookingStatus.CONFIRMED)).stream().anyMatch(b-> request.startTime().isBefore(b.getEndTime()) && endTime.isAfter(b.getStartTime()));
         Booking booking = new Booking();
@@ -76,6 +99,9 @@ public class BookingService {
         booking.setStartTime(request.startTime());
         booking.setEndTime(endTime);
         booking.setNote(request.note());
+        booking.setBookingType(type);
+        booking.setFinalPrice(service.getPrice()*(type==BookingType.EMERGENCY?1.20:1.0));
+        booking.setResponseDeadline(LocalDateTime.now().plusHours(24).isBefore(startsAt)?LocalDateTime.now().plusHours(24):startsAt);
         booking = repository.save(booking);
 
         logger.log(Level.INFO, "Booking created successfully");
@@ -86,8 +112,6 @@ public class BookingService {
     }
 
     public Page<Booking> getCurrentUserBookings(BookingStatus status, Pageable p){
-//        Long id = current.getCurrentUser().getId();
-//        return status == null? repository.findByCustomerId(id,p) : repository.findByCustomerIdAndStatus(id, status, p);
 
         User user = current.getCurrentUser();
 
@@ -128,6 +152,7 @@ public class BookingService {
             return booking;
         }
 
+        booking.setLateCancellation(LocalDateTime.of(booking.getBookingDate(),booking.getStartTime()).isBefore(LocalDateTime.now().plusHours(24)));
         booking.setStatus(BookingStatus.CANCELLED);
         repository.save(booking);
         logger.log(Level.INFO, "Booking cancelled successfully");
@@ -141,6 +166,14 @@ public class BookingService {
         User user = current.getCurrentUser();
         boolean provider = booking.getService().getProvider().getUser().getId().equals(user.getId());
         BookingStatus oldStatus = booking.getStatus();
+
+        if(oldStatus==BookingStatus.PENDING && booking.getResponseDeadline()!=null && LocalDateTime.now().isAfter(booking.getResponseDeadline())){
+            throw new InvalidBookingStatusException("Provider response deadline has passed");
+        }
+        if(newStatus==BookingStatus.COMPLETED && !reports.existsByBookingId(id)){
+            throw new InvalidBookingStatusException("Submit the required service report before completing this booking");
+        }
+
         boolean isAvailable = (oldStatus == BookingStatus.PENDING && (newStatus == BookingStatus.CONFIRMED || newStatus == BookingStatus.CANCELLED)) || (oldStatus == BookingStatus.CONFIRMED && (newStatus == BookingStatus.COMPLETED || newStatus == BookingStatus.CANCELLED));
 
         if(!provider && user.getRole() != Role.ADMIN){
@@ -148,6 +181,10 @@ public class BookingService {
         }
         if(!isAvailable){
             throw new InvalidBookingStatusException("Invalid booking status transition: "+oldStatus+" -> "+newStatus);
+        }
+
+        if(newStatus==BookingStatus.AWAITING_REPORT){
+            booking.setReportDeadline(LocalDateTime.of(booking.getBookingDate(),booking.getEndTime()).plusHours(24));
         }
 
         booking.setStatus(newStatus);
@@ -187,7 +224,10 @@ public class BookingService {
                 booking.getStartTime(),
                 booking.getEndTime(),
                 booking.getStatus(),
-                booking.getNote()
+                booking.getNote(),
+                booking.getBookingType().name(),
+                booking.getFinalPrice(),
+                booking.getResponseDeadline()
         );
     }
 }
