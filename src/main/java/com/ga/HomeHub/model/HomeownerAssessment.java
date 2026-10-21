@@ -1,8 +1,10 @@
 package com.ga.HomeHub.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
 import org.springframework.data.annotation.Id;
-
+@Entity
+@Data
 public class HomeownerAssessment extends BaseEntity{
     @Id
     @GeneratedValue(strategy= GenerationType.IDENTITY)
