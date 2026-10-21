@@ -2,6 +2,7 @@ package com.ga.HomeHub.dto;
 
 import com.ga.HomeHub.model.enums.BookingStatus;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 
 public record BookingResponse(
@@ -14,6 +15,9 @@ public record BookingResponse(
         LocalTime startTime,
         LocalTime endTime,
         BookingStatus status,
-        String note
+        String note,
+        String bookingType,
+        Double finalPrice,
+        LocalDateTime responseDeadline
 ) {
 }
