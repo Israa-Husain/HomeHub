@@ -1,7 +1,10 @@
 package com.ga.HomeHub.model;
 
 import jakarta.persistence.*;
+import lombok.Data;
 
+@Entity
+@Data
 public class ServiceReport extends BaseEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
