@@ -43,7 +43,7 @@ public class HomeHubServiceTest {
     private BookingRepository bookingRepository;
 
     @Mock
-    private HomeRopository homeRepository;
+    private HomeRepository homeRepository;
 
     @Mock
     private ServiceOfferingRepository serviceRepository;
