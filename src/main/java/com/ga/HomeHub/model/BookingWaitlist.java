@@ -1,16 +1,23 @@
+
 package com.ga.HomeHub.model;
 
 import com.ga.HomeHub.model.enums.WaitlistStatus;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.ManyToOne;
 import lombok.Data;
-import org.springframework.data.annotation.Id;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 @Entity
 @Data
-public class BookingWaitlist extends BaseEntity{
+public class BookingWaitlist extends BaseEntity {
     @Id
     @GeneratedValue(strategy=GenerationType.IDENTITY)
     private Long id;
@@ -34,5 +41,4 @@ public class BookingWaitlist extends BaseEntity{
     private WaitlistStatus status=WaitlistStatus.WAITING;
 
     private LocalDateTime offerExpiresAt;
-
 }
