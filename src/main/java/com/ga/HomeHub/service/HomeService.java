@@ -4,7 +4,7 @@ import com.ga.HomeHub.dto.HomeRequest;
 import com.ga.HomeHub.exception.InformationNotFoundException;
 import com.ga.HomeHub.exception.UnauthorizedException;
 import com.ga.HomeHub.model.Home;
-import com.ga.HomeHub.repository.HomeRopository;
+import com.ga.HomeHub.repository.HomeRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 @AllArgsConstructor
 public class HomeService {
-    private final HomeRopository repository;
+    private final HomeRepository repository;
     private final CurrentUserService current;
 
     public Home createHome(HomeRequest request){
