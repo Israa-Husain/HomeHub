@@ -57,6 +57,17 @@ public class ProviderService {
         return savedProvider;
     }
 
+    //Providers can update their portfolio and emergency-booking availability.
+    public ProviderProfile updatePortfolio(String portfolioDescribtion, boolean emergencyEnabled){
+        ProviderProfile provider = getCurrentProviderProfile();
+        if(portfolioDescribtion!=null && portfolioDescribtion.length()>3000){
+            throw new IllegalArgumentException("Portfolio is too long");
+        }
+        provider.setPortfolioDescription(portfolioDescribtion);
+        provider.setEmergencyEnabled(emergencyEnabled);
+        return repository.save(provider);
+    }
+
     public ProviderResponse toResponse(ProviderProfile provider) {
         return new ProviderResponse(
                 provider.getId(),
