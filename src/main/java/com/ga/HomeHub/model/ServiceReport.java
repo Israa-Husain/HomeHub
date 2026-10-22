@@ -11,7 +11,7 @@ public class ServiceReport extends BaseEntity{
     private Long id;
 
     @OneToOne(optional = false)
-    @JoinColumn(unique = true)
+    @JoinColumn(unique = true, name="booking_id",nullable=false)
     private Booking booking;
 
     @ManyToOne(optional = false)
