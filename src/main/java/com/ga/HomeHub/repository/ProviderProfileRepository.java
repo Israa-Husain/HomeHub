@@ -14,6 +14,6 @@ import java.util.Optional;
 public interface ProviderProfileRepository extends JpaRepository<ProviderProfile, Long> {
     Optional<ProviderProfile> findByUserId(Long userId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select p from Provider Profile p where p.id=id")
+    @Query("select p from ProviderProfile p where p.id=id")
     Optional<ProviderProfile> lockById(@Param("id") Long id);
 }
