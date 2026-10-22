@@ -114,6 +114,9 @@ public class BookingRescheduleService {
             b.setBookingDate(date);
             b.setStartTime(start);
             b.setEndTime(end);
+            // Reset reminders when an appointment is rescheduled so the homeowner and provider receive reminders for the new date.
+            b.setReminder24Sent(false);
+            b.setReminder1Sent(false);
             bookings.save(b);
         }
 
