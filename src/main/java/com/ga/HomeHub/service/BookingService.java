@@ -29,7 +29,7 @@ import java.util.logging.Logger;
 @AllArgsConstructor
 public class BookingService {
     private final BookingRepository repository;
-    private final HomeRopository homes;
+    private final HomeRepository homes;
     private final ServiceOfferingRepository services;
     private final AvailabilityRepository availability;
     private final CurrentUserService current;
