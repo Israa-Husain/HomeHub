@@ -27,7 +27,7 @@ public class CategoryService {
     }
 
     public Page<Category> getAllCategories(Pageable p){
-        return repository.findAll(p);
+        return repository.findByStatus(CategoryStatus.ACTIVE,p);
     }
 
     public Category getCategoryById(Long id){
