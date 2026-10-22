@@ -1,3 +1,4 @@
+
 package com.ga.HomeHub.service;
 
 import com.ga.HomeHub.dto.auth.ChangePasswordRequest;
@@ -8,7 +9,7 @@ import com.ga.HomeHub.exception.UnauthorizedException;
 import com.ga.HomeHub.model.User;
 import com.ga.HomeHub.model.enums.UserStatus;
 import com.ga.HomeHub.repository.UserRepository;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,7 +28,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class UserService {
     private final UserRepository userRepository;
     private final CurrentUserService currentUserService;
@@ -48,6 +49,7 @@ public class UserService {
 
         userRepository.save(user);
         auditLogService.record(user,"Update profile","User",user.getId(),"User Updated Profile");
+
         return UserResponse.from(user);
     }
 
@@ -70,7 +72,7 @@ public class UserService {
     public String picture(MultipartFile file){
         User u=currentUserService.getCurrentUser();
 
-        if(file.isEmpty() || file.getContentType()==null
+        if(file==null || file.isEmpty() || file.getContentType()==null
                 || !Set.of("image/jpeg","image/png","image/webp").contains(file.getContentType())
                 || file.getSize()>5_000_000){
             throw new IllegalArgumentException("Profile picture must be JPG, PNG or WEBP and <= 5MB");
