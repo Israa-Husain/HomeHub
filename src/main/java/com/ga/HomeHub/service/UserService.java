@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -32,27 +33,32 @@ public class UserService {
     private final CurrentUserService currentUserService;
     private final AuditLogService auditLogService;
     private final PasswordEncoder passwordEncoder;
+    private final Logger logger=Logger.getLogger(UserService.class.getName());
 
-    private final Logger logger = Logger.getLogger(UserService.class.getName());
-
-    public UserResponse getCurrentUserProfile() {
+    public UserResponse getCurrentUserProfile(){
         return UserResponse.from(currentUserService.getCurrentUser());
     }
 
+    @Transactional
     public UserResponse update(UpdateUserRequest updateUserRequest){
-        User user = currentUserService.getCurrentUser();
+        User user=currentUserService.getCurrentUser();
         user.setFirstName(updateUserRequest.firstName());
         user.setLastName(updateUserRequest.lastName());
         user.setPhoneNumber(updateUserRequest.phoneNumber());
 
         userRepository.save(user);
-        auditLogService.record(user,"Update profile","User", user.getId(), "User Updated Profile");
+        auditLogService.record(user,"Update profile","User",user.getId(),"User Updated Profile");
         return UserResponse.from(user);
     }
 
+    @Transactional
     public void changePassword(ChangePasswordRequest newPassword){
-        User user = currentUserService.getCurrentUser();
-        if(!passwordEncoder.matches(newPassword.currentPassword(), user.getPasswordHash())) throw new UnauthorizedException("Current password is incorrect");
+        User user=currentUserService.getCurrentUser();
+
+        if(!passwordEncoder.matches(newPassword.currentPassword(),user.getPasswordHash())){
+            throw new UnauthorizedException("Current password is incorrect");
+        }
+
         user.setPasswordHash(passwordEncoder.encode(newPassword.newPassword()));
         userRepository.save(user);
     }
@@ -61,33 +67,48 @@ public class UserService {
         return userRepository.findAll(pageable).map(UserResponse::from);
     }
 
-    public String picture(MultipartFile file) {
-        User u = currentUserService.getCurrentUser();
-        if (file.isEmpty() || file.getContentType() == null
-                || !Set.of("image/jpeg", "image/png", "image/webp").contains(file.getContentType())
-                || file.getSize() > 5_000_000)
+    public String picture(MultipartFile file){
+        User u=currentUserService.getCurrentUser();
+
+        if(file.isEmpty() || file.getContentType()==null
+                || !Set.of("image/jpeg","image/png","image/webp").contains(file.getContentType())
+                || file.getSize()>5_000_000){
             throw new IllegalArgumentException("Profile picture must be JPG, PNG or WEBP and <= 5MB");
-        try {
-            Path dir = Paths.get("uploads");
+        }
+
+        try{
+            Path dir=Paths.get("uploads");
             Files.createDirectories(dir);
-            String name = u.getId() + "-" + UUID.randomUUID() + "-"
-                    + Paths.get(file.getOriginalFilename()).getFileName();
-            Files.copy(file.getInputStream(), dir.resolve(name), StandardCopyOption.REPLACE_EXISTING);
-            u.setProfilePictureUrl("/uploads/" + name);
+
+            String extension;
+
+            if(file.getContentType().equals("image/jpeg")){
+                extension=".jpg";
+            }else if(file.getContentType().equals("image/png")){
+                extension=".png";
+            }else{
+                extension=".webp";
+            }
+
+            String name=u.getId()+"-"+UUID.randomUUID()+extension;
+            Files.copy(file.getInputStream(),dir.resolve(name),StandardCopyOption.REPLACE_EXISTING);
+
+            u.setProfilePictureUrl("/uploads/"+name);
             userRepository.save(u);
-            auditLogService.record(u,"Update Profile Picture","User", u.getId(), "User Updated Profile Picture");
+            auditLogService.record(u,"Update Profile Picture","User",u.getId(),"User Updated Profile Picture");
+
             return u.getProfilePictureUrl();
-        } catch (IOException e) {
-            throw new RuntimeException("Could not store file");
+        }catch(IOException e){
+            throw new RuntimeException("Could not store file",e);
         }
     }
 
+    @Transactional
     public void deactivate(Long id){
-        User user = userRepository.findById(id).orElseThrow(()-> new InformationNotFoundException("User not found"));
+        User user=userRepository.findById(id).orElseThrow(()->new InformationNotFoundException("User not found"));
         user.setStatus(UserStatus.INACTIVE);
         userRepository.save(user);
-        logger.log(Level.INFO, "Admin deactivated user");
-        auditLogService.record(currentUserService.getCurrentUser(), "Deactivate User", "User",id,"Admin deactivated the user.");
+        logger.log(Level.INFO,"Admin deactivated user");
+        auditLogService.record(currentUserService.getCurrentUser(),"Deactivate User","User",id,"Admin deactivated the user.");
     }
-
 }
