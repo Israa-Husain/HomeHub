@@ -36,4 +36,10 @@ public class AvailabilityController {
     public void deleteAvailability(@PathVariable Long availabilityId){
         availabilityService.deleteAvailability(availabilityId);
     }
+
+    @PostMapping("/time-off")
+    @PreAuthorize("hasRole('PROVIDER')")
+    public ResponseEntity<Availability> blockTimeOff(@Valid @RequestBody AvailabilityRequest request){
+        return ResponseEntity.status(201).body(availabilityService.blockTimeOff(request));
+    }
 }
