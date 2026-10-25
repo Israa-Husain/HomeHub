@@ -7,5 +7,5 @@ import java.util.Optional;
 
 public interface ServiceReportRepository extends JpaRepository<ServiceReport,Long> {
     boolean existsByBookingId(Long bookingId);
-    Optional<ServiceReport> findBookingId(Long bookingId);
+    Optional<ServiceReport> findByBooking_Id(Long bookingId);
 }
