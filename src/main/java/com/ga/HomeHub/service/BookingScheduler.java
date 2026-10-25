@@ -9,9 +9,12 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -21,41 +24,58 @@ public class BookingScheduler {
     private final NotificationService notifications;
     private final BookingWaitlistService waitlist;
     private final EntityManager entityManager;
+    private final PlatformTransactionManager transactionManager;
 
     //Automatically expire pending bookings when the provider misses the response deadline.
     @Scheduled(fixedDelay=60000)
-    @Transactional
     public void expirePending(){
         LocalDateTime now=LocalDateTime.now();
 
-        for(Booking candidate:bookings.findByStatus(BookingStatus.PENDING)){
-            if(candidate.getResponseDeadline()==null || candidate.getResponseDeadline().isAfter(now)){
-                continue;
-            }
+        //Collect booking IDs so each booking can be processed in a separate transaction.
+        List<Long> bookingIds=bookings.findByStatus(BookingStatus.PENDING).stream()
+                .filter(booking->booking.getResponseDeadline()!=null && !booking.getResponseDeadline().isAfter(now))
+                .map(Booking::getId)
+                .toList();
 
-            //Lock the provider to prevent conflicts with concurrent booking decisions.
-            providers.lockById(candidate.getService().getProvider().getId());
+        TransactionTemplate transaction=new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
 
-            //Refresh the booking after acquiring the provider lock.
-            entityManager.refresh(candidate);
+        for(Long bookingId:bookingIds){
+            transaction.execute(status->{
+                Booking booking=bookings.findById(bookingId).orElse(null);
 
-            //Recheck the booking status and deadline before expiring it.
-            if(candidate.getStatus()==BookingStatus.PENDING
-                    && candidate.getResponseDeadline()!=null
-                    && !candidate.getResponseDeadline().isAfter(LocalDateTime.now())){
+                if(booking==null){
+                    return null;
+                }
 
-                candidate.setStatus(BookingStatus.EXPIRED);
-                bookings.save(candidate);
+                Long providerId=booking.getService().getProvider().getId();
 
-                notifications.sendNotifications(candidate.getCustomer().getId(),
-                        "Booking #"+candidate.getId()+" expired without a provider response");
+                //Lock the provider before updating the booking.
+                providers.lockById(providerId);
+
+                //Refresh the booking after acquiring the provider lock.
+                entityManager.refresh(booking);
+
+                //Recheck the booking because another request may have changed it.
+                if(booking.getStatus()!=BookingStatus.PENDING
+                        || booking.getResponseDeadline()==null
+                        || booking.getResponseDeadline().isAfter(LocalDateTime.now())){
+                    return null;
+                }
+
+                booking.setStatus(BookingStatus.EXPIRED);
+                bookings.save(booking);
+
+                notifications.sendNotifications(
+                        booking.getCustomer().getId(),
+                        "Booking #"+booking.getId()+" expired without a provider response"
+                );
 
                 //Offer the released appointment to the next eligible homeowner.
-                waitlist.offerNextAvailableProviderSlot(
-                        candidate.getService().getProvider().getId(),
-                        candidate.getBookingDate()
-                );
-            }
+                waitlist.offerNextAvailableProviderSlot(providerId,booking.getBookingDate());
+
+                return null;
+            });
         }
     }
 
