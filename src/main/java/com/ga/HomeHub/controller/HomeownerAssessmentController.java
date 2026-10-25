@@ -2,6 +2,8 @@ package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.model.HomeownerAssessment;
 import com.ga.HomeHub.service.HomeownerAssessmentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -10,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name="HomeownerAssessment", description="HomeHub homeownerassessment API endpoints")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/assessments")
@@ -18,11 +21,13 @@ public class HomeownerAssessmentController {
     private final HomeownerAssessmentService service;
     public record AssessmentRequest(Integer rating,String comment){}
 
+    @Operation(summary="Submit assessment")
     @PostMapping("/booking/{bookingId}")
     public Map<String, Object> submitAssessment(@PathVariable Long bookingId, @Valid @RequestBody AssessmentRequest request){
         return response(service.submitHomeownerAssessment(bookingId, request.rating(), request.comment()));
     }
 
+    @Operation(summary="Get assessment")
     @GetMapping("/booking/{bookingId}")
     public List<Map<String,Object>> getAssessment(@PathVariable Long bookingId){
         return service.getHomeownerAssessments(bookingId).stream().map(this::response).toList();

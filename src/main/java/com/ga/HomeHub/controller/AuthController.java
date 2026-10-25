@@ -2,6 +2,8 @@ package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.dto.auth.*;
 import com.ga.HomeHub.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -9,35 +11,41 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
+@Tag(name="Auth", description="HomeHub auth API endpoints")
 @RestController
 @AllArgsConstructor
 @RequestMapping("/api/auth")
 public class AuthController {
     private final AuthService authService;
 
+    @Operation(summary="Register")
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request){
         authService.registerUser(request);
         return ResponseEntity.status(201).body(Map.of("message","Registration success. Verify your email."));
     }
 
+    @Operation(summary="Verify email")
     @GetMapping("/verify")
     public ResponseEntity<?> verifyEmail(@RequestParam String token) {
         authService.verifyEmail(token);
         return ResponseEntity.ok(Map.of("message", "Email verified. You can login."));
     }
 
+    @Operation(summary="Login")
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request){
         return authService.loginUser(request);
     }
 
+    @Operation(summary="Forgot")
     @PostMapping("/forgot-password")
     public Map<String,String> forgot(@Valid @RequestBody ForgotPasswordRequest request){
         authService.requestPasswordReset(request.email());
         return Map.of("message","Sent reset if the account exist");
     }
 
+    @Operation(summary="Reset")
     @PostMapping("/reset-password")
     public Map<String,String> reset(@Valid @RequestBody ResetPasswordRequest request){
         authService.resetPassword(request);

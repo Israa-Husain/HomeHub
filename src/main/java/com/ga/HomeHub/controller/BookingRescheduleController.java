@@ -2,6 +2,8 @@ package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.model.BookingRescheduleRequest;
 import com.ga.HomeHub.service.BookingRescheduleService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -12,6 +14,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
 
+@Tag(name="BookingReschedule", description="HomeHub bookingreschedule API endpoints")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/reschedules")
@@ -20,12 +23,14 @@ public class BookingRescheduleController {
     public record Request(@NotNull LocalDate date, @NotNull LocalTime start){}
     public record Decision(@NotNull boolean approve){}
 
+    @Operation(summary="Request reschedule")
     @PostMapping("/booking/{bookingId}")
     @PreAuthorize("hasRole('HOMEOWNER')")
     public Map<String,Object> requestReschedule(@PathVariable Long bookingId,@Valid @RequestBody Request request){
         return response(service.request(bookingId,request.date(),request.start()));
     }
 
+    @Operation(summary="Decide reschedule")
     @PutMapping("/{id}/decision")
     @PreAuthorize("hasRole('PROVIDER')")
     public Map<String,Object> decideReschedule(@PathVariable Long id,@Valid @RequestBody Decision decision){

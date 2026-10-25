@@ -2,6 +2,8 @@ package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.model.ServiceReview;
 import com.ga.HomeHub.service.ServiceReviewService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -14,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name="ServiceReview", description="HomeHub servicereview API endpoints")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/reviews")
@@ -21,12 +24,14 @@ public class ServiceReviewController {
     private final ServiceReviewService service;
     public record ReviewRequest(@NotNull Long bookingId, @Min(1) @Max(5) int rating, String comment){}
 
+    @Operation(summary="Create review")
     @PostMapping
     @PreAuthorize("hasRole('HOMEOWNER')")
     public Map<String,Object> createReview(@Valid @RequestBody ReviewRequest request){
         return response(service.createServiceReviw(request.bookingId(), request.rating(), request.comment()));
     }
 
+    @Operation(summary="Get provider")
     @GetMapping("/provider/{providerId}")
     public List<Map<String,Object>> getProvider(@PathVariable Long providerId){
         return service.providerReviews(providerId).stream().map(this::response).toList();

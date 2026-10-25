@@ -6,6 +6,8 @@ import com.ga.HomeHub.dto.BookingStatusRequest;
 import com.ga.HomeHub.model.Booking;
 import com.ga.HomeHub.model.enums.BookingStatus;
 import com.ga.HomeHub.service.BookingService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,12 +16,14 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+@Tag(name="Booking", description="HomeHub booking API endpoints")
 @RestController
 @AllArgsConstructor
 @RequestMapping("/api/booking")
 public class BookingController {
     private final BookingService bookingService;
 
+    @Operation(summary="Create booking")
     @PostMapping
     @PreAuthorize("hasRole('HOMEOWNER')")
     public ResponseEntity<BookingResponse> createBooking(@Valid @RequestBody BookingRequest request){
@@ -27,21 +31,25 @@ public class BookingController {
         return ResponseEntity.status(201).body(bookingService.toResponse(booking));
     }
 
+    @Operation(summary="Get current user bookings")
     @GetMapping
     public Page<BookingResponse> getCurrentUserBookings(@RequestParam(required = false)BookingStatus status, Pageable pageable){
         return bookingService.getCurrentUserBookings(status, pageable).map(bookingService::toResponse);
     }
 
+    @Operation(summary="Get booking by id")
     @GetMapping("/{bookingId}")
     public BookingResponse getBookingById(@PathVariable Long bookingId) {
         return bookingService.toResponse(bookingService.getBookingById(bookingId));
     }
 
+    @Operation(summary="Cancel booking")
     @DeleteMapping("/{bookingId}")
     public BookingResponse cancelBooking(@PathVariable Long bookingId){
         return bookingService.toResponse(bookingService.cancelBooking(bookingId));
     }
 
+    @Operation(summary="Update booking status")
     @PutMapping("/{bookingId}/status")
     @PreAuthorize("hasAnyRole('ADMIN','PROVIDER')")
     public BookingResponse updateBookingStatus(@PathVariable Long bookingId, @Valid @RequestBody BookingStatusRequest request){
