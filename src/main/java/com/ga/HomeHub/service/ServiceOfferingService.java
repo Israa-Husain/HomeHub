@@ -44,7 +44,6 @@ public class ServiceOfferingService {
         Page<ServiceOffering> services = categoryId == null ? repository.findByStatus(ServiceStatus.ACTIVE, p) : repository.findByCategoryIdAndStatus(categoryId, ServiceStatus.ACTIVE, p);
 
         return services.map(this::toResponse);
-//        return categoryId == null ? repository.findByStatus(ServiceStatus.ACTIVE,p) : repository.findByCategoryIdAndStatus(categoryId, ServiceStatus.ACTIVE, p);
     }
 
     public ServiceResponse getServiceResponseById(Long id) {
