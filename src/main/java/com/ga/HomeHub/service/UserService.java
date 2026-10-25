@@ -18,11 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -72,9 +72,7 @@ public class UserService {
     public String picture(MultipartFile file){
         User u=currentUserService.getCurrentUser();
 
-        if(file==null || file.isEmpty() || file.getContentType()==null
-                || !Set.of("image/jpeg","image/png","image/webp").contains(file.getContentType())
-                || file.getSize()>5_000_000){
+        if(file==null || file.isEmpty() || file.getSize()>5_000_000){
             throw new IllegalArgumentException("Profile picture must be JPG, PNG or WEBP and <= 5MB");
         }
 
@@ -82,14 +80,21 @@ public class UserService {
             Path dir=Paths.get("uploads");
             Files.createDirectories(dir);
 
+            //Detect the actual image signature instead of trusting the browser content type.
             String extension;
-
-            if(file.getContentType().equals("image/jpeg")){
-                extension=".jpg";
-            }else if(file.getContentType().equals("image/png")){
-                extension=".png";
-            }else{
-                extension=".webp";
+            try(InputStream input=file.getInputStream()){
+                byte[] header=input.readNBytes(12);
+                if(header.length>=3 && (header[0]&0xff)==0xff && (header[1]&0xff)==0xd8 && (header[2]&0xff)==0xff){
+                    extension=".jpg";
+                }else if(header.length>=8 && (header[0]&0xff)==0x89 && header[1]==0x50 && header[2]==0x4e && header[3]==0x47
+                        && header[4]==0x0d && header[5]==0x0a && header[6]==0x1a && header[7]==0x0a){
+                    extension=".png";
+                }else if(header.length>=12 && header[0]=='R' && header[1]=='I' && header[2]=='F' && header[3]=='F'
+                        && header[8]=='W' && header[9]=='E' && header[10]=='B' && header[11]=='P'){
+                    extension=".webp";
+                }else{
+                    throw new IllegalArgumentException("File contents must be JPG, PNG or WEBP");
+                }
             }
 
             String name=u.getId()+"-"+UUID.randomUUID()+extension;
