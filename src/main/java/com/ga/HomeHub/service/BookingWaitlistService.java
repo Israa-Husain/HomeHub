@@ -309,7 +309,7 @@ public class BookingWaitlistService {
 
         providers.lockById(providerId).orElseThrow(()->new InformationNotFoundException("Provider not found"));
 
-        List<BookingWaitlist> entries=waiting.findByServiceProviderIdAndRequestedDateAndStatusOrderByCreatedAtAsc(
+        List<BookingWaitlist> entries=waiting.findByServiceProviderIdAndRequestedDateAndStatusOrderByCreatedAtAscIdAsc(
                 providerId,date,WaitlistStatus.WAITING);
 
         for(BookingWaitlist entry:entries){
