@@ -15,5 +15,5 @@ public interface BookingWaitlistRepository extends JpaRepository<BookingWaitlist
     List<BookingWaitlist> findByHomeownerId(Long homeownerId);
     boolean existsByServiceIdAndRequestedDateAndRequestedStartTimeAndStatus(Long serviceId, LocalDate requestedDate, LocalTime requestedStartTime, WaitlistStatus status);
     List<BookingWaitlist> findByServiceProviderIdAndRequestedDateAndStatus(Long providerId, LocalDate requestedDate, WaitlistStatus status);
-    List<BookingWaitlist> findByServiceProviderIdAndRequestedDateAndStatusOrderByCreatedAtAsc(Long providerId, LocalDate requestedDate, WaitlistStatus status);
+    List<BookingWaitlist> findByServiceProviderIdAndRequestedDateAndStatusOrderByCreatedAtAscIdAsc(Long providerId, LocalDate requestedDate, WaitlistStatus status);
 }
