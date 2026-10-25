@@ -7,27 +7,17 @@ import com.ga.HomeHub.exception.BookingConflictException;
 import com.ga.HomeHub.exception.InformationNotFoundException;
 import com.ga.HomeHub.exception.InvalidBookingStatusException;
 import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.Booking;
-import com.ga.HomeHub.model.Home;
-import com.ga.HomeHub.model.ServiceOffering;
-import com.ga.HomeHub.model.User;
-import com.ga.HomeHub.model.enums.BookingStatus;
-import com.ga.HomeHub.model.enums.BookingType;
-import com.ga.HomeHub.model.enums.ProviderStatus;
-import com.ga.HomeHub.model.enums.Role;
-import com.ga.HomeHub.model.enums.ServiceStatus;
-import com.ga.HomeHub.repository.AvailabilityRepository;
-import com.ga.HomeHub.repository.BookingRepository;
-import com.ga.HomeHub.repository.HomeRepository;
-import com.ga.HomeHub.repository.ProviderProfileRepository;
-import com.ga.HomeHub.repository.ServiceOfferingRepository;
-import com.ga.HomeHub.repository.ServiceReportRepository;
+import com.ga.HomeHub.model.*;
+import com.ga.HomeHub.model.enums.*;
+import com.ga.HomeHub.repository.*;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
@@ -49,6 +39,8 @@ public class BookingService {
     private final ServiceReportRepository reports;
     private final BookingWaitlistService waitlist;
     private final Logger logger=Logger.getLogger(BookingService.class.getName());
+    private final BookingWaitlistRepository waiting;
+    private final EntityManager entityManager;
 
     @Transactional
     public Booking createBooking(BookingRequest request){
@@ -104,6 +96,10 @@ public class BookingService {
         }
         if(clash){
             throw new BookingConflictException("Provider is booked during this time");
+        }
+
+        if(hasOverlappingOffer(service.getProvider().getId(),request.bookingDate(),request.startTime(),endTime)){
+            throw new BookingConflictException("Appointment has an active waitlist offer");
         }
 
         Booking booking=new Booking();
@@ -164,9 +160,12 @@ public class BookingService {
         //Lock the provider before changing a booking that occupies an appointment.
         providerLocks.lockById(booking.getService().getProvider().getId()).orElseThrow(()->new InformationNotFoundException("Provider not found"));
 
-        booking=findBookingById(id);
+        entityManager.refresh(booking);
         if(booking.getStatus()==BookingStatus.COMPLETED){
             throw new InvalidBookingStatusException("Completed booking can not be cancelled");
+        }
+        if(booking.getStatus()==BookingStatus.REJECTED || booking.getStatus()==BookingStatus.EXPIRED){
+            throw new InvalidBookingStatusException("Booking is no longer active");
         }
         if(booking.getStatus()==BookingStatus.CANCELLED){
             return booking;
@@ -199,11 +198,11 @@ public class BookingService {
         //Lock the provider before changing the booking status.
         providerLocks.lockById(booking.getService().getProvider().getId()).orElseThrow(()->new InformationNotFoundException("Provider not found"));
 
-        booking=findBookingById(id);
+        entityManager.refresh(booking);
 
         BookingStatus oldStatus=booking.getStatus();
 
-        if(oldStatus==BookingStatus.PENDING && booking.getResponseDeadline()!=null && LocalDateTime.now().isAfter(booking.getResponseDeadline())){
+        if(oldStatus==BookingStatus.PENDING && booking.getResponseDeadline()!=null && !LocalDateTime.now().isBefore(booking.getResponseDeadline())){
             throw new InvalidBookingStatusException("Provider response deadline has passed");
         }
 
@@ -212,15 +211,15 @@ public class BookingService {
         }
 
         boolean isAvailable= (oldStatus==BookingStatus.PENDING
-                        && (newStatus==BookingStatus.CONFIRMED
-                        || newStatus==BookingStatus.REJECTED
-                        || newStatus==BookingStatus.CANCELLED))
-                        || (oldStatus==BookingStatus.CONFIRMED
-                        && (newStatus==BookingStatus.AWAITING_REPORT
-                        || newStatus==BookingStatus.COMPLETED
-                        || newStatus==BookingStatus.CANCELLED))
-                        || (oldStatus==BookingStatus.AWAITING_REPORT
-                        && newStatus==BookingStatus.COMPLETED);
+                && (newStatus==BookingStatus.CONFIRMED
+                || newStatus==BookingStatus.REJECTED
+                || newStatus==BookingStatus.CANCELLED))
+                || (oldStatus==BookingStatus.CONFIRMED
+                && (newStatus==BookingStatus.AWAITING_REPORT
+                || newStatus==BookingStatus.COMPLETED
+                || newStatus==BookingStatus.CANCELLED))
+                || (oldStatus==BookingStatus.AWAITING_REPORT
+                && newStatus==BookingStatus.COMPLETED);
 
         if(!isAvailable){
             throw new InvalidBookingStatusException("Invalid booking status transition: "+oldStatus+" -> "+newStatus);
@@ -276,5 +275,24 @@ public class BookingService {
                 booking.getFinalPrice(),
                 booking.getResponseDeadline()
         );
+    }
+
+    //Check unexpired offers for any service of the provider.
+    private boolean hasOverlappingOffer(Long providerId, LocalDate date, LocalTime start, LocalTime end){
+        for(BookingWaitlist offer:waiting.findByServiceProviderIdAndRequestedDateAndStatus(providerId,date, WaitlistStatus.OFFERED)){
+            if(offer.getOfferExpiresAt()==null || !offer.getOfferExpiresAt().isAfter(LocalDateTime.now())){
+                continue;
+            }
+            LocalTime offeredStart=offer.getRequestedStartTime();
+            int duration=offer.getService().getDurationMinutes();
+            if(duration<=0){
+                continue;
+            }
+            LocalTime offeredEnd=offeredStart.plusMinutes(duration);
+            if(start.isBefore(offeredEnd) && end.isAfter(offeredStart)){
+                return true;
+            }
+        }
+        return false;
     }
 }
