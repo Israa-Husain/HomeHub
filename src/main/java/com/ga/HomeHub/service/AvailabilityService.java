@@ -25,11 +25,13 @@ public class AvailabilityService {
     ProviderProfileRepository providerLocks;
     BookingRepository bookings;
 
+    @Transactional
     public Availability createAvailability(AvailabilityRequest request){
         if(request.date().isBefore(LocalDate.now()) || !request.endTime().isAfter(request.startTime())){
             throw new IllegalArgumentException("Invalid availability time");
         }
         ProviderProfile provider = providers.getCurrentProviderProfile();
+        providerLocks.lockById(provider.getId());
         Availability availability = new Availability();
         availability.setProvider(provider);
         availability.setDate(request.date());
@@ -42,10 +44,16 @@ public class AvailabilityService {
         return repository.findByProviderIdAndDateAndIsAvailableTrue(providerId,date);
     }
 
+    @Transactional
     public void deleteAvailability(Long id){
         Availability availability = repository.findById(id).orElseThrow(()-> new InformationNotFoundException("Availability not found"));
         if(!availability.getProvider().getId().equals(providers.getCurrentProviderProfile().getId())){
             throw new UnauthorizedException("Not your availability");
+        }
+        providerLocks.lockById(availability.getProvider().getId());
+        boolean booked=bookings.findByServiceProviderIdAndBookingDateAndStatusIn(availability.getProvider().getId(),availability.getDate(),List.of(BookingStatus.PENDING,BookingStatus.CONFIRMED,BookingStatus.AWAITING_REPORT)).stream().anyMatch(b->availability.getStartTime().isBefore(b.getEndTime()) && availability.getEndTime().isAfter(b.getStartTime()));
+        if(booked){
+            throw new BookingConflictException("Existing bookings overlap this availability");
         }
         availability.setAvailable(false);
         repository.save(availability);
