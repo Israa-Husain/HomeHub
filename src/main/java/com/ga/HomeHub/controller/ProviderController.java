@@ -29,4 +29,11 @@ public class ProviderController {
         return providerService.toResponse(providerService.getCurrentProviderProfile());
     }
 
+    public record PortfolioRequest(String description,boolean emergencyEnabled){}
+    @PutMapping("/portfolio")
+    @PreAuthorize("hasRole('PROVIDER')")
+    public ProviderResponse updatePortfolio(@RequestBody PortfolioRequest request){
+        return providerService.toResponse(providerService.updatePortfolio(request.description(),request.emergencyEnabled()));
+    }
+
 }
