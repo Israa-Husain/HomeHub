@@ -67,9 +67,9 @@ public class ServiceReportService {
     @Transactional(readOnly=true)
     public ServiceReport getServiceReport(Long bookingId){
         User user = current.getCurrentUser();
-        ServiceReport report = reports.findBookingId(bookingId).orElseThrow(()-> new InformationNotFoundException("Report not found"));
+        ServiceReport report = reports.findByBooking_Id(bookingId).orElseThrow(()-> new InformationNotFoundException("Report not found"));
         Booking booking = report.getBooking();
-        if(!booking.getCustomer().getId().equals(user.getId()) && !booking.getService().getProvider().getId().equals(user.getId())){
+        if(!booking.getCustomer().getId().equals(user.getId()) && !booking.getService().getProvider().getUser().getId().equals(user.getId())){
             throw new UnauthorizedException("Report is private");
         }
 
