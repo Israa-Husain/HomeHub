@@ -5,6 +5,8 @@ import com.ga.HomeHub.model.BookingWaitlist;
 import com.ga.HomeHub.service.BookingWaitlistService;
 import com.ga.HomeHub.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -27,24 +29,52 @@ public class BookingWaitlistController {
     public record JoinRequest(@NotNull Long serviceId,@NotNull Long homeId,@NotNull LocalDate date,@NotNull LocalTime start){}
 
     @Operation(summary="Join waitlist")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping
     public Map<String,Object> joinWaitlist(@Valid @RequestBody JoinRequest request){
         return response(waitlist.joinWaitlist(request.serviceId(),request.homeId(),request.date(),request.start()));
     }
 
     @Operation(summary="Get my waitlist")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping
     public List<Map<String,Object>> getMyWaitlist(){
         return waitlist.getMyWaitlist().stream().map(this::response).toList();
     }
 
     @Operation(summary="Leave waitlist")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @DeleteMapping("/{id}")
     public void leaveWaitlist(@PathVariable Long id){
         waitlist.leaveWaitlist(id);
     }
 
     @Operation(summary="Claim waitlist offer")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping("/{id}/claim")
     public Object claimWaitlistOffer(@PathVariable Long id){
         Booking booking=waitlist.claimWaitlistOffer(id);

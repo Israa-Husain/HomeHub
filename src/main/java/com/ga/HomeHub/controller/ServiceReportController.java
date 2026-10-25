@@ -3,6 +3,8 @@ package com.ga.HomeHub.controller;
 import com.ga.HomeHub.model.ServiceReport;
 import com.ga.HomeHub.service.ServiceReportService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -22,12 +24,26 @@ public class ServiceReportController {
     public record ReportRequest(@NotBlank String workDone, String materialsUsed, String recommendation){}
 
     @Operation(summary="Get report")
-    @PostMapping("/booking/{bookingId}")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
+    @GetMapping("/booking/{bookingId}")
     public Map<String,Object> getReport(@PathVariable Long bookingId){
         return response(service.getServiceReport(bookingId));
     }
 
     @Operation(summary="Submit report")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping("/booking/{bookingId}")
     @PreAuthorize("hasRole('PROVIDER')")
     public Map<String,Object> submitReport(@PathVariable Long bookingId, @Valid @RequestBody ReportRequest request){

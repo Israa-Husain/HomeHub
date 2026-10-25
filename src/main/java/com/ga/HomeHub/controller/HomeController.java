@@ -4,6 +4,8 @@ import com.ga.HomeHub.dto.HomeRequest;
 import com.ga.HomeHub.model.Home;
 import com.ga.HomeHub.service.HomeService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -22,6 +24,13 @@ public class HomeController {
     private final HomeService homeService;
 
     @Operation(summary="Create home")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="201",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping
     @PreAuthorize("hasRole('HOMEOWNER')")
     public ResponseEntity<Home> createHome(@Valid @RequestBody HomeRequest request){
@@ -29,6 +38,13 @@ public class HomeController {
     }
 
     @Operation(summary="Get current user homes")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping
     @PreAuthorize("hasRole('HOMEOWNER')")
     public Page<Home> getCurrentUserHomes(Pageable pageable){
@@ -36,6 +52,13 @@ public class HomeController {
     }
 
     @Operation(summary="Get home by id")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping("/{homeId}")
     @PreAuthorize("hasRole('HOMEOWNER')")
     public Home getHomeById(@PathVariable Long homeId){
@@ -43,6 +66,13 @@ public class HomeController {
     }
 
     @Operation(summary="Update home")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PutMapping("/{homeId}")
     @PreAuthorize("hasRole('HOMEOWNER')")
     public Home updateHome(@PathVariable Long homeId, @Valid @RequestBody HomeRequest request){
@@ -50,6 +80,13 @@ public class HomeController {
     }
 
     @Operation(summary="Delete home")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="204",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @DeleteMapping("/{homeId}")
     @PreAuthorize("hasRole('HOMEOWNER')")
     @ResponseStatus(HttpStatus.NO_CONTENT)

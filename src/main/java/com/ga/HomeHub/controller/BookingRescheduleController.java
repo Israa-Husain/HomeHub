@@ -3,6 +3,8 @@ package com.ga.HomeHub.controller;
 import com.ga.HomeHub.model.BookingRescheduleRequest;
 import com.ga.HomeHub.service.BookingRescheduleService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -24,6 +26,13 @@ public class BookingRescheduleController {
     public record Decision(@NotNull boolean approve){}
 
     @Operation(summary="Request reschedule")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping("/booking/{bookingId}")
     @PreAuthorize("hasRole('HOMEOWNER')")
     public Map<String,Object> requestReschedule(@PathVariable Long bookingId,@Valid @RequestBody Request request){
@@ -31,6 +40,13 @@ public class BookingRescheduleController {
     }
 
     @Operation(summary="Decide reschedule")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PutMapping("/{id}/decision")
     @PreAuthorize("hasRole('PROVIDER')")
     public Map<String,Object> decideReschedule(@PathVariable Long id,@Valid @RequestBody Decision decision){

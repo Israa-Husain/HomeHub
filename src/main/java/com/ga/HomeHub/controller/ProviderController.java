@@ -5,6 +5,8 @@ import com.ga.HomeHub.dto.ProviderResponse;
 import com.ga.HomeHub.model.ProviderProfile;
 import com.ga.HomeHub.service.ProviderService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -20,6 +22,13 @@ public class ProviderController {
     private final ProviderService providerService;
 
     @Operation(summary="Create provider profile")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="201",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping
     @PreAuthorize("hasRole('PROVIDER')")
     public ResponseEntity<ProviderResponse> createProviderProfile(@Valid @RequestBody ProviderRequest request){
@@ -28,6 +37,13 @@ public class ProviderController {
     }
 
     @Operation(summary="Get current provider profile")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping("/profile")
     @PreAuthorize("hasRole('PROVIDER')")
     public ProviderResponse getCurrentProviderProfile(){
@@ -36,6 +52,13 @@ public class ProviderController {
 
     public record PortfolioRequest(String description,boolean emergencyEnabled){}
     @Operation(summary="Update portfolio")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PutMapping("/portfolio")
     @PreAuthorize("hasRole('PROVIDER')")
     public ProviderResponse updatePortfolio(@RequestBody PortfolioRequest request){

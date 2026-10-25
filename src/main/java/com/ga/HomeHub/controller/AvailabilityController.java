@@ -4,6 +4,8 @@ import com.ga.HomeHub.dto.AvailabilityRequest;
 import com.ga.HomeHub.model.Availability;
 import com.ga.HomeHub.service.AvailabilityService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -23,12 +25,26 @@ public class AvailabilityController {
     private final AvailabilityService availabilityService;
 
     @Operation(summary="Get provider availability by date")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping
     public List<Availability> getProviderAvailabilityByDate(@RequestParam Long providerId, @RequestParam LocalDate date){
         return availabilityService.getProviderAvailabilityByDate(providerId, date);
     }
 
     @Operation(summary="Create availability")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="201",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping
     @PreAuthorize("hasRole('PROVIDER')")
     public ResponseEntity<Availability> createAvailability(@Valid @RequestBody AvailabilityRequest request){
@@ -36,6 +52,13 @@ public class AvailabilityController {
     }
 
     @Operation(summary="Delete availability")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="204",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @DeleteMapping("/{availabilityId}")
     @PreAuthorize("hasRole('PROVIDER')")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -44,6 +67,13 @@ public class AvailabilityController {
     }
 
     @Operation(summary="Block time off")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="201",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping("/time-off")
     @PreAuthorize("hasRole('PROVIDER')")
     public ResponseEntity<Availability> blockTimeOff(@Valid @RequestBody AvailabilityRequest request){

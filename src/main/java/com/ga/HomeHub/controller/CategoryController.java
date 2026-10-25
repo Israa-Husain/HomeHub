@@ -4,6 +4,8 @@ import com.ga.HomeHub.dto.CategoryRequest;
 import com.ga.HomeHub.model.Category;
 import com.ga.HomeHub.service.CategoryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
@@ -22,18 +24,39 @@ public class CategoryController {
     private final CategoryService categoryService;
 
     @Operation(summary="Get all categories")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping
     public Page<Category> getAllCategories(Pageable pageable){
         return categoryService.getAllCategories(pageable);
     }
 
     @Operation(summary="Get category by id")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping("/{categoryId}")
     public Category getCategoryById(@PathVariable Long categoryId){
         return categoryService.getCategoryById(categoryId);
     }
 
     @Operation(summary="Create category")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="201",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Category> createCategory(@Valid @RequestBody CategoryRequest request){
@@ -41,6 +64,13 @@ public class CategoryController {
     }
 
     @Operation(summary="Update category")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PutMapping("/{categoryId}")
     @PreAuthorize("hasRole('ADMIN')")
     public Category updateCategory(@PathVariable Long categoryId, @Valid @RequestBody CategoryRequest request){
@@ -48,6 +78,13 @@ public class CategoryController {
     }
 
     @Operation(summary="Delete category")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="204",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @DeleteMapping("/{categoryId}")
     @PreAuthorize("hasRole('ADMIN')")
     @ResponseStatus(HttpStatus.NO_CONTENT)

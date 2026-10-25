@@ -3,6 +3,8 @@ package com.ga.HomeHub.controller;
 import com.ga.HomeHub.model.ServiceReview;
 import com.ga.HomeHub.service.ServiceReviewService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -25,6 +27,13 @@ public class ServiceReviewController {
     public record ReviewRequest(@NotNull Long bookingId, @Min(1) @Max(5) int rating, String comment){}
 
     @Operation(summary="Create review")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping
     @PreAuthorize("hasRole('HOMEOWNER')")
     public Map<String,Object> createReview(@Valid @RequestBody ReviewRequest request){
@@ -32,6 +41,13 @@ public class ServiceReviewController {
     }
 
     @Operation(summary="Get provider")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping("/provider/{providerId}")
     public List<Map<String,Object>> getProvider(@PathVariable Long providerId){
         return service.providerReviews(providerId).stream().map(this::response).toList();

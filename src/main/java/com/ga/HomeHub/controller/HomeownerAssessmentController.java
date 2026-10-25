@@ -3,6 +3,8 @@ package com.ga.HomeHub.controller;
 import com.ga.HomeHub.model.HomeownerAssessment;
 import com.ga.HomeHub.service.HomeownerAssessmentService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,12 +24,26 @@ public class HomeownerAssessmentController {
     public record AssessmentRequest(Integer rating,String comment){}
 
     @Operation(summary="Submit assessment")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @PostMapping("/booking/{bookingId}")
     public Map<String, Object> submitAssessment(@PathVariable Long bookingId, @Valid @RequestBody AssessmentRequest request){
         return response(service.submitHomeownerAssessment(bookingId, request.rating(), request.comment()));
     }
 
     @Operation(summary="Get assessment")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found")
+    })
     @GetMapping("/booking/{bookingId}")
     public List<Map<String,Object>> getAssessment(@PathVariable Long bookingId){
         return service.getHomeownerAssessments(bookingId).stream().map(this::response).toList();
