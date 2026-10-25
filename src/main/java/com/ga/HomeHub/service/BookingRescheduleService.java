@@ -9,10 +9,9 @@ import com.ga.HomeHub.model.BookingRescheduleRequest;
 import com.ga.HomeHub.model.User;
 import com.ga.HomeHub.model.enums.BookingStatus;
 import com.ga.HomeHub.model.enums.RescheduleStatus;
-import com.ga.HomeHub.repository.AvailabilityRepository;
-import com.ga.HomeHub.repository.BookingRepository;
-import com.ga.HomeHub.repository.BookingRescheduleRequestRepository;
-import com.ga.HomeHub.repository.ProviderProfileRepository;
+import com.ga.HomeHub.model.enums.WaitlistStatus;
+import com.ga.HomeHub.repository.*;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,16 +30,20 @@ public class BookingRescheduleService {
     private final AvailabilityRepository availability;
     private final CurrentUserService current;
     private final AuditLogService audit;
+    private final BookingWaitlistRepository waiting;
+    private final BookingWaitlistService waitlist;
+    private final EntityManager entityManager;
+
 
     //Allows a homeowner to request a different appointment without changing the original booking until the provider approves.
     @Transactional
     public BookingRescheduleRequest request(Long bookingId, LocalDate date, LocalTime start){
-        Booking b=bookings.findById(bookingId).orElseThrow(()->new InformationNotFoundException("Booking not found"));
+        Booking booking=bookings.findById(bookingId).orElseThrow(()->new InformationNotFoundException("Booking not found"));
         User user=current.getCurrentUser();
-        if(!b.getCustomer().getId().equals(user.getId())){
+        if(!booking.getCustomer().getId().equals(user.getId())){
             throw new UnauthorizedException("Not your booking");
         }
-        if(b.getStatus()!=BookingStatus.PENDING && b.getStatus()!=BookingStatus.CONFIRMED){
+        if(booking.getStatus()!=BookingStatus.PENDING && booking.getStatus()!=BookingStatus.CONFIRMED){
             throw new BookingConflictException("Booking can not be rescheduled");
         }
         if(requests.existsByBookingIdAndStatus(bookingId, RescheduleStatus.PENDING)){
@@ -52,21 +55,21 @@ public class BookingRescheduleService {
             throw new BookingConflictException("Rescheduling requires 24 hours notice");
         }
 
-        BookingRescheduleRequest r=new BookingRescheduleRequest();
-        r.setBooking(b);
-        r.setRequester(user);
-        r.setRequestedDate(date);
-        r.setRequestedStartTime(start);
-        r=requests.save(r);
+        BookingRescheduleRequest request=new BookingRescheduleRequest();
+        request.setBooking(booking);
+        request.setRequester(user);
+        request.setRequestedDate(date);
+        request.setRequestedStartTime(start);
+        request=requests.save(request);
         audit.record(user, "Request Reschedule", "Booking", bookingId, "Requested "+date+" "+start);
-        return r;
+        return request;
     }
 
     //Allows the assigned provider to approve or reject a request. Approval rechecks the appointment while holding the provider database lock.
     @Transactional
     public BookingRescheduleRequest decide(Long id, boolean approve){
-        BookingRescheduleRequest r=requests.findById(id).orElseThrow(()->new InformationNotFoundException("Reschedule request not found"));
-        Booking b=r.getBooking();
+        BookingRescheduleRequest request=requests.findById(id).orElseThrow(()->new InformationNotFoundException("Reschedule request not found"));
+        Booking b=request.getBooking();
         User user=current.getCurrentUser();
         if(!b.getService().getProvider().getUser().getId().equals(user.getId())){
             throw new UnauthorizedException("Not assigned provider");
@@ -74,7 +77,9 @@ public class BookingRescheduleService {
 
         //Lock the provider before validating or changing the booking to prevent concurrent bookings and rescheduling conflicts.
         providers.lockById(b.getService().getProvider().getId()).orElseThrow(()->new InformationNotFoundException("Provider not found"));
-        if(r.getStatus()!=RescheduleStatus.PENDING){
+        entityManager.refresh(request);
+        entityManager.refresh(b);
+        if(request.getStatus()!=RescheduleStatus.PENDING){
             throw new BookingConflictException("Request already decided");
         }
 
@@ -83,8 +88,8 @@ public class BookingRescheduleService {
             throw new BookingConflictException("Booking can no longer be rescheduled");
         }
         if(approve){
-            LocalDate date=r.getRequestedDate();
-            LocalTime start=r.getRequestedStartTime();
+            LocalDate date=request.getRequestedDate();
+            LocalTime start=request.getRequestedStartTime();
 
             //Recheck the 24-hour notice rule at approval time.
             if(date==null || start==null || LocalDateTime.of(date, start).isBefore(LocalDateTime.now().plusHours(24))){
@@ -106,11 +111,21 @@ public class BookingRescheduleService {
             //Check whether the requested appointment overlaps any time-off period blocked by the provider.
             boolean timeOff=availability.findByProviderIdAndDateAndTimeOffTrue(providerId, date).stream().anyMatch(a-> start.isBefore(a.getEndTime()) && end.isAfter(a.getStartTime()));
 
-            if(!slot || clash || timeOff){
+            boolean offered=waiting.findByServiceProviderIdAndRequestedDateAndStatus(providerId,date, WaitlistStatus.OFFERED)
+                    .stream().anyMatch(w->{
+                        if(w.getOfferExpiresAt()==null || !w.getOfferExpiresAt().isAfter(LocalDateTime.now())){
+                            return false;
+                        }
+                        LocalTime offeredStart=w.getRequestedStartTime();
+                        LocalTime offeredEnd=offeredStart.plusMinutes(w.getService().getDurationMinutes());
+                        return start.isBefore(offeredEnd) && end.isAfter(offeredStart);
+                    });
+            if(!slot || clash || timeOff || offered){
                 throw new BookingConflictException("Requested slot no longer available");
             }
 
             //Only update the original booking after the provider approves and all availability and concurrency checks succeed.
+            LocalDate oldDate=b.getBookingDate();
             b.setBookingDate(date);
             b.setStartTime(start);
             b.setEndTime(end);
@@ -118,10 +133,11 @@ public class BookingRescheduleService {
             b.setReminder24Sent(false);
             b.setReminder1Sent(false);
             bookings.save(b);
+            waitlist.offerNextAvailableProviderSlot(providerId,oldDate);
         }
 
-        r.setStatus(approve?RescheduleStatus.APPROVED:RescheduleStatus.REJECTED);
+        request.setStatus(approve?RescheduleStatus.APPROVED:RescheduleStatus.REJECTED);
         audit.record(user, "Reschedule Decision", "Booking", b.getId(), approve?"Approved":"Rejected");
-        return requests.save(r);
+        return requests.save(request);
     }
 }
