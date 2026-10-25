@@ -10,12 +10,12 @@ import com.ga.HomeHub.model.User;
 import com.ga.HomeHub.model.enums.ProviderStatus;
 import com.ga.HomeHub.model.enums.Role;
 import com.ga.HomeHub.repository.ProviderProfileRepository;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class ProviderService {
 
     private final ProviderProfileRepository repository;
