@@ -32,6 +32,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.logging.Logger;
 
 @Service
 @RequiredArgsConstructor
@@ -46,11 +47,14 @@ public class BookingWaitlistService {
     private final NotificationService notifications;
     private final EntityManager entityManager;
     private final PlatformTransactionManager transactionManager;
+    private static final Logger logger = Logger.getLogger(BookingWaitlistService.class.getName());
 
     //Allows homeowners to join a waitlist for an unavailable appointment.
     @Transactional
     public BookingWaitlist joinWaitlist(Long serviceId, Long homeId, LocalDate date, LocalTime start){
         User user=current.getCurrentUser();
+        //Track new waitlist requests without logging personal details.
+        logger.info("Waitlist join requested: userId="+user.getId()+", serviceId="+serviceId+", date="+date+", start="+start);
         Home home=homes.findById(homeId).orElseThrow(()->new InformationNotFoundException("Home not found"));
 
         if(!home.getOwner().getId().equals(user.getId())){
@@ -72,9 +76,12 @@ public class BookingWaitlistService {
             throw new BookingConflictException("Waitlist appointments require at least 24 hours notice");
         }
 
+        //Trace provider locking when investigating simultaneous waitlist operations.
+        logger.fine("Waiting for provider lock: providerId="+service.getProvider().getId());
         //Lock the provider before checking availability.
         Long providerId=service.getProvider().getId();
         providers.lockById(providerId).orElseThrow(()->new InformationNotFoundException("Provider not found"));
+        logger.fine("Provider lock acquired: providerId="+providerId);
 
         int duration=service.getDurationMinutes();
 
@@ -111,6 +118,8 @@ public class BookingWaitlistService {
                         && (w.getStatus()==WaitlistStatus.WAITING || w.getStatus()==WaitlistStatus.OFFERED));
 
         if(duplicate){
+            //Record duplicate active waitlist requests.
+            logger.warning("Duplicate waitlist request: userId="+user.getId()+", serviceId="+serviceId);
             throw new BookingConflictException("You are already on the waitlist for this appointment");
         }
 
@@ -121,7 +130,7 @@ public class BookingWaitlistService {
         entry.setRequestedDate(date);
         entry.setRequestedStartTime(start);
         entry.setStatus(WaitlistStatus.WAITING);
-
+        logger.info("Waitlist entry created: entryId="+waiting.save(entry).getId()+", providerId="+providerId);
         return waiting.save(entry);
     }
 
@@ -142,7 +151,10 @@ public class BookingWaitlistService {
         }
 
         Long providerId=entry.getService().getProvider().getId();
+        //Trace provider locking when investigating simultaneous waitlist operations.
+        logger.fine("Waiting for provider lock: providerId="+providerId);
         providers.lockById(providerId).orElseThrow(()->new InformationNotFoundException("Provider not found"));
+        logger.fine("Provider lock acquired: providerId="+providerId);
 
         entityManager.refresh(entry);
 
@@ -154,7 +166,8 @@ public class BookingWaitlistService {
 
         entry.setStatus(WaitlistStatus.CANCELLED);
         waiting.save(entry);
-
+        //Record waitlist withdrawal and whether an offered slot was released.
+        logger.info("Waitlist entry cancelled: entryId="+id+", releasedOffer="+offered);
         if(offered){
             offerNextAvailableProviderSlot(providerId,entry.getRequestedDate());
         }
@@ -175,12 +188,17 @@ public class BookingWaitlistService {
         }
 
         Long providerId=entry.getService().getProvider().getId();
+        //Trace provider locking when investigating simultaneous waitlist operations.
+        logger.fine("Waiting for provider lock: providerId="+providerId);
         providers.lockById(providerId).orElseThrow(()->new InformationNotFoundException("Provider not found"));
+        logger.fine("Provider lock acquired: providerId="+providerId);
 
         entityManager.refresh(entry);
 
         if(entry.getStatus()!=WaitlistStatus.OFFERED || entry.getOfferExpiresAt()==null
                 || !entry.getOfferExpiresAt().isAfter(LocalDateTime.now())){
+            //Record failed attempts to claim expired or inactive offers.
+            logger.warning("Waitlist claim rejected: inactive or expired offer, entryId="+id);
             throw new BookingConflictException("Waitlist offer has expired");
         }
 
@@ -245,6 +263,9 @@ public class BookingWaitlistService {
         entry.setStatus(WaitlistStatus.CLAIMED);
         waiting.save(entry);
 
+        //Record the claimed offer and the booking it created.
+        logger.info("Waitlist offer claimed: entryId="+id+", bookingId="+booking.getId());
+
         notifications.sendNotifications(service.getProvider().getUser().getId(),
                 "Waitlist offer claimed; booking #"+booking.getId());
 
@@ -257,6 +278,8 @@ public class BookingWaitlistService {
                         WaitlistStatus.OFFERED,LocalDateTime.now())
                 .stream().map(BookingWaitlist::getId).toList();
 
+        //Log the size of each expiration batch-how many expired waitlist offers the system found during one expiration check.
+        logger.info("Waitlist expiration scan: expiredOfferCandidates="+expiredIds.size());
         TransactionTemplate transaction=new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionTemplate.PROPAGATION_REQUIRES_NEW);
 
@@ -269,7 +292,10 @@ public class BookingWaitlistService {
                 }
 
                 Long providerId=entry.getService().getProvider().getId();
+                //Trace provider locking when investigating simultaneous waitlist operations.
+                logger.fine("Waiting for provider lock: providerId="+providerId);
                 providers.lockById(providerId).orElseThrow(()->new InformationNotFoundException("Provider not found"));
+                logger.fine("Provider lock acquired: providerId="+providerId);
 
                 entityManager.refresh(entry);
 
@@ -280,6 +306,9 @@ public class BookingWaitlistService {
 
                 entry.setStatus(WaitlistStatus.EXPIRED);
                 waiting.save(entry);
+
+                //Record each offer expiration inside its own transaction.
+                logger.info("Waitlist offer expired: entryId="+id+", providerId="+providerId);
 
                 offerNextAvailableProviderSlot(providerId,entry.getRequestedDate());
 
@@ -307,7 +336,10 @@ public class BookingWaitlistService {
             return;
         }
 
+        //Trace provider locking when investigating simultaneous waitlist operations.
+        logger.fine("Waiting for provider lock: providerId="+providerId);
         providers.lockById(providerId).orElseThrow(()->new InformationNotFoundException("Provider not found"));
+        logger.fine("Provider lock acquired: providerId="+providerId);
 
         List<BookingWaitlist> entries=waiting.findByServiceProviderIdAndRequestedDateAndStatusOrderByCreatedAtAscIdAsc(
                 providerId,date,WaitlistStatus.WAITING);
@@ -359,6 +391,9 @@ public class BookingWaitlistService {
             entry.setStatus(WaitlistStatus.OFFERED);
             entry.setOfferExpiresAt(LocalDateTime.now().plusMinutes(15));
             waiting.save(entry);
+
+            //Record the time-limited offer for troubleshooting queue behavior.
+            logger.info("Waitlist offer created: entryId="+entry.getId()+", providerId="+providerId+", expiresAt="+entry.getOfferExpiresAt());
 
             notifications.sendNotifications(entry.getHomeowner().getId(),
                     "Waitlist slot offered for service #"+service.getId()+"; expires in 15 minutes");
