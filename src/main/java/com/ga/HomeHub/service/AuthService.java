@@ -72,17 +72,6 @@ public class AuthService {
         email.sendEmail(user.getEmailAddress(), "Verify your HomeHub account", "Welcome to HomeHub!\n\n" + "Please verify your email by clicking the link below:\n\n" + verificationLink + "\n\nThis verification link expires in 24 hours.");
     }
 
-//    public void verifyEmail(String token){
-//        EmailVerificationToken t = verifyRepository.findByToken(token).orElseThrow(()-> new InformationNotFoundException("Verification token not found"));
-//        if(t.getUsedAt() != null || t.isExpired()){
-//            throw new UnauthorizedException("Verification token is invalid or expired");
-//        }
-//        t.getUser().setEmailVerified(true);
-//        users.save(t.getUser());
-//        t.markUsed();
-//        verifyRepository.save(t);
-//    }
-
     public void verifyEmail(String token) {
         EmailVerificationToken verificationToken = verifyRepository.findByToken(token).orElseThrow(() -> new InformationNotFoundException("Invalid verification token"));
 
@@ -140,16 +129,6 @@ public class AuthService {
         }
     }
 
-//    public void resetPassword(ResetPasswordRequest request) {
-//        PasswordResetToken t = resetRepository.findByToken(request.token()).orElseThrow(() -> new InformationNotFoundException("Reset token not found"));
-//        if (t.getUsedAt() != null || t.isExpired()){
-//            throw new UnauthorizedException("Reset token is invalid or expired");
-//        }
-//        t.getUser().setPasswordHash(encoder.encode(request.newPassword()));
-//        users.save(t.getUser());
-//        t.markUsed();
-//        resetRepository.save(t);
-//    }
 
     public void resetPassword(ResetPasswordRequest request) {
         PasswordResetToken t = resetRepository.findByToken(request.token()).orElseThrow(() -> new InformationNotFoundException("Reset token not found"));
