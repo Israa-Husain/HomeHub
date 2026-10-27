@@ -48,25 +48,39 @@ public class BookingService {
         Home home=homes.findById(request.homeId()).orElseThrow(()->new InformationNotFoundException("Home not found"));
         ServiceOffering service=services.findById(request.serviceId()).orElseThrow(()->new InformationNotFoundException("Service not found"));
 
+        //Log the booking request.
+        logger.info("Booking requested: userId="+user.getId()+", serviceId="+service.getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
+
+        //Log provider lock acquisition to help trace concurrent requests.
+        logger.fine("Waiting for provider lock: providerId="+service.getProvider().getId());
+
         //Lock the correct provider before checking appointment availability.
         providerLocks.lockById(service.getProvider().getId()).orElseThrow(()->new InformationNotFoundException("Provider not found"));
+
+        //Log when the provider lock has been acquired.
+        logger.fine("Provider lock acquired: providerId="+service.getProvider().getId());
 
         LocalDateTime startsAt=LocalDateTime.of(request.bookingDate(),request.startTime());
         LocalTime endTime=request.startTime().plusMinutes(service.getDurationMinutes());
         BookingType type=request.bookingType()==null?BookingType.NORMAL:request.bookingType();
         if(!startsAt.isAfter(LocalDateTime.now())){
+            logger.warning("Booking rejected: reason=Past appointment , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Can not book a past appointment");
         }
         if(type==BookingType.NORMAL && startsAt.isBefore(LocalDateTime.now().plusHours(24))){
+            logger.warning("Booking rejected: reason=Insufficient notice , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Normal bookings require at least 24 hours notice");
         }
         if(type==BookingType.EMERGENCY && (!service.isEmergencyEnabled() || !service.getProvider().isEmergencyEnabled())){
+            logger.warning("Booking rejected: reason=Emergency booking disabled , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Emergency booking is not enabled for this provider and service");
         }
         if(!home.isActive()){
+            logger.warning("Booking rejected: reason=Inactive home , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Inactive homes cannot be booked");
         }
         if(service.getDurationMinutes()<=0 || request.startTime().toSecondOfDay()+(long)service.getDurationMinutes()*60>=86400){
+            logger.warning("Booking rejected: reason=Invalid service end time , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Service must end on the same day");
         }
 
@@ -74,6 +88,7 @@ public class BookingService {
                 .anyMatch(a->request.startTime().isBefore(a.getEndTime()) && endTime.isAfter(a.getStartTime()));
 
         if(blocked){
+            logger.warning("Booking rejected: reason=Provider time off , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Provider is not available");
         }
 
@@ -86,19 +101,24 @@ public class BookingService {
         ).stream().anyMatch(b->request.startTime().isBefore(b.getEndTime()) && endTime.isAfter(b.getStartTime()));
 
         if(!home.getOwner().getId().equals(user.getId())){
+            logger.warning("Booking denied: userId="+user.getId()+", homeId="+home.getId());
             throw new UnauthorizedException("Not your home");
         }
         if(service.getStatus()!=ServiceStatus.ACTIVE || service.getProvider().getProviderStatus()!=ProviderStatus.APPROVED){
+            logger.warning("Booking rejected: unavailable serviceId="+service.getId()+", providerId="+service.getProvider().getId());
             throw new BookingConflictException("Service unavailable");
         }
         if(!slot){
+            logger.warning("Booking rejected: reason=Outside provider availability , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Requested time is outside the provider availability");
         }
         if(clash){
+            logger.warning("Booking rejected: reason=Overlapping provider booking , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Provider is booked during this time");
         }
 
         if(hasOverlappingOffer(service.getProvider().getId(),request.bookingDate(),request.startTime(),endTime)){
+            logger.warning("Booking rejected: reason=Active waitlist offer , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Appointment has an active waitlist offer");
         }
 
@@ -116,7 +136,8 @@ public class BookingService {
         booking.setResponseDeadline(now.plusHours(24).isBefore(startsAt)?now.plusHours(24):startsAt);
         booking=repository.save(booking);
 
-        logger.log(Level.INFO,"Booking created successfully");
+        //Log the saved booking for tracing; the transaction may not have committed yet.
+        logger.info("Booking saved: bookingId="+booking.getId()+", userId="+user.getId()+", providerId="+service.getProvider().getId());
         audit.record(user,"Create Booking","Booking",booking.getId(),"User created booking");
         sendProviderNotification(booking,"You received a new booking");
 
@@ -145,6 +166,8 @@ public class BookingService {
         boolean homeowner=booking.getCustomer().getId().equals(user.getId());
         boolean provider=booking.getService().getProvider().getUser().getId().equals(user.getId());
         if(!homeowner && !provider && user.getRole()!=Role.ADMIN){
+            //Log unauthorized booking access attempts.
+            logger.warning("Booking access denied: bookingId="+id+", userId="+user.getId());
             throw new UnauthorizedException("You can not view this booking");
         }
         return booking;
@@ -155,19 +178,31 @@ public class BookingService {
         Booking booking=findBookingById(id);
         User user=current.getCurrentUser();
         if(!booking.getCustomer().getId().equals(user.getId()) && user.getRole()!=Role.ADMIN){
+            //Log unauthorized cancellation attempts.
+            logger.warning("Booking cancellation denied: bookingId="+id+", userId="+user.getId());
             throw new UnauthorizedException("Not your booking");
         }
+
+        //Log cancellation.
+        logger.info("Booking cancellation requested: bookingId="+id+", userId="+user.getId());
+        logger.fine("Waiting for provider lock during cancellation: providerId="+booking.getService().getProvider().getId());
         //Lock the provider before changing a booking that occupies an appointment.
         providerLocks.lockById(booking.getService().getProvider().getId()).orElseThrow(()->new InformationNotFoundException("Provider not found"));
 
+        //Log successful lock acquisition.
+        logger.fine("Provider lock acquired during cancellation: providerId="+booking.getService().getProvider().getId());
         entityManager.refresh(booking);
         if(booking.getStatus()==BookingStatus.COMPLETED){
+            logger.warning("Booking cancellation rejected: bookingId="+id+", status="+booking.getStatus());
             throw new InvalidBookingStatusException("Completed booking can not be cancelled");
         }
         if(booking.getStatus()==BookingStatus.REJECTED || booking.getStatus()==BookingStatus.EXPIRED){
+            logger.warning("Booking cancellation rejected: bookingId="+id+", status="+booking.getStatus());
             throw new InvalidBookingStatusException("Booking is no longer active");
         }
         if(booking.getStatus()==BookingStatus.CANCELLED){
+            //Log an idempotent cancellation request.
+            logger.info("Booking already cancelled: bookingId="+id);
             return booking;
         }
 
@@ -175,7 +210,8 @@ public class BookingService {
         booking.setLateCancellation(LocalDateTime.of(booking.getBookingDate(),booking.getStartTime()).isBefore(LocalDateTime.now().plusHours(24)));
         booking.setStatus(BookingStatus.CANCELLED);
         repository.save(booking);
-        logger.log(Level.INFO,"Booking cancelled successfully");
+        //Log the booking cancellation and whether the cancellation was late.
+        logger.info("Booking cancelled: bookingId="+id+", userId="+user.getId()+", previousStatus="+oldStatus);
         sendProviderNotification(booking,"Booking cancelled");
         audit.record(user,"Cancel Booking","Booking",booking.getId(),"Booking cancelled");
         //Offer the released appointment to the next eligible waitlisted homeowner.
@@ -192,21 +228,30 @@ public class BookingService {
 
         boolean provider=booking.getService().getProvider().getUser().getId().equals(user.getId());
         if(!provider && user.getRole()!=Role.ADMIN){
+            //Log unauthorized booking status update attempts.
+            logger.warning("Booking status update denied: bookingId="+id+", userId="+user.getId());
             throw new UnauthorizedException("Provider or admin required");
         }
 
+        //Log status update requests.
+        logger.info("Booking status update requested: bookingId="+id+", userId="+user.getId()+", newStatus="+newStatus);
+        logger.fine("Waiting for provider lock during status update: providerId="+booking.getService().getProvider().getId());
         //Lock the provider before changing the booking status.
         providerLocks.lockById(booking.getService().getProvider().getId()).orElseThrow(()->new InformationNotFoundException("Provider not found"));
 
+        //Log successful provider lock acquisition.
+        logger.fine("Provider lock acquired during status update: providerId="+booking.getService().getProvider().getId());
         entityManager.refresh(booking);
 
         BookingStatus oldStatus=booking.getStatus();
 
         if(oldStatus==BookingStatus.PENDING && booking.getResponseDeadline()!=null && !LocalDateTime.now().isBefore(booking.getResponseDeadline())){
+            logger.warning("Booking status update rejected: bookingId="+id+", reason=Response deadline passed");
             throw new InvalidBookingStatusException("Provider response deadline has passed");
         }
 
         if(newStatus==BookingStatus.COMPLETED && !reports.existsByBookingId(id)){
+            logger.warning("Booking status update rejected: bookingId="+id+", reason=Required service report missing");
             throw new InvalidBookingStatusException("Submit the required service report before completing this booking");
         }
 
@@ -222,6 +267,7 @@ public class BookingService {
                 && newStatus==BookingStatus.COMPLETED);
 
         if(!isAvailable){
+            logger.warning("Invalid booking status transition: bookingId="+id+", from="+oldStatus+", to="+newStatus);
             throw new InvalidBookingStatusException("Invalid booking status transition: "+oldStatus+" -> "+newStatus);
         }
 
@@ -232,7 +278,8 @@ public class BookingService {
         booking.setStatus(newStatus);
         repository.save(booking);
 
-        logger.log(Level.INFO,"Booking status updated to: "+newStatus);
+        //Log the saved booking status transition for auditing and troubleshooting.
+        logger.info("Booking status updated: bookingId="+id+", from="+oldStatus+", to="+newStatus+", userId="+user.getId());
         audit.record(user,"Update Booking status","Booking",booking.getId(),"Booking status changed to "+newStatus);
         sendBookingNotification(booking,"Booking status changed to "+newStatus);
 
