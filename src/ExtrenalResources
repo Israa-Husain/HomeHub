@@ -20,3 +20,11 @@ https://www.geeksforgeeks.org/advance-java/spring-security-preauthorize-annotati
 CommandLineRunner:
 https://docs.spring.io/spring-boot/api/java/org/springframework/boot/CommandLineRunner.html
 
+@Operation and @ApiResponse:
+https://www.geeksforgeeks.org/advance-java/spring-boot-operation-vs-apiresponse-in-swagger/
+
+Transaction Management:
+https://docs.spring.io/spring-framework/reference/data-access/transaction/programmatic.html
+
+Task Execution and Scheduling:
+https://docs.spring.io/spring-framework/reference/integration/scheduling.html
