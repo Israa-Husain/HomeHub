@@ -10,10 +10,13 @@ import com.ga.HomeHub.model.User;
 import com.ga.HomeHub.model.enums.BookingStatus;
 import com.ga.HomeHub.model.enums.RescheduleStatus;
 import com.ga.HomeHub.model.enums.WaitlistStatus;
+import com.ga.HomeHub.model.enums.Role;
 import com.ga.HomeHub.repository.*;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -34,7 +37,31 @@ public class BookingRescheduleService {
     private final BookingWaitlistRepository waiting;
     private final BookingWaitlistService waitlist;
     private final EntityManager entityManager;
+    private final NotificationService notifications;
     private static final Logger logger = Logger.getLogger(BookingRescheduleService.class.getName());
+
+    //List only the authenticated participant's requests, including decisions retained in the database.
+    @Transactional(readOnly=true)
+    public Page<BookingRescheduleRequest> getCurrentUserRequests(RescheduleStatus status,Long bookingId,Pageable pageable){
+        User user=current.getCurrentUser();
+        if(user.getRole()!=Role.HOMEOWNER && user.getRole()!=Role.PROVIDER){
+            throw new UnauthorizedException("Homeowner or provider required");
+        }
+        return requests.findCurrentUserRequests(user.getId(),user.getRole()==Role.PROVIDER,status,bookingId,pageable);
+    }
+
+    @Transactional(readOnly=true)
+    public BookingRescheduleRequest getRequestById(Long id){
+        BookingRescheduleRequest request=requests.findById(id).orElseThrow(()->new InformationNotFoundException("Reschedule request not found"));
+        User user=current.getCurrentUser();
+        Booking booking=request.getBooking();
+        boolean homeowner=user.getRole()==Role.HOMEOWNER && booking.getCustomer().getId().equals(user.getId());
+        boolean provider=user.getRole()==Role.PROVIDER && booking.getService().getProvider().getUser().getId().equals(user.getId());
+        if(!homeowner && !provider){
+            throw new UnauthorizedException("You can not view this reschedule request");
+        }
+        return request;
+    }
 
 
     //Allows a homeowner to request a different appointment without changing the original booking until the provider approves.
@@ -48,6 +75,11 @@ public class BookingRescheduleService {
             logger.warning("Reschedule request denied: unauthorized userId="+user.getId()+", bookingId="+bookingId);
             throw new UnauthorizedException("Not your booking");
         }
+        //Serialize duplicate-pending checks with provider decisions and other booking mutations.
+        Long providerId=booking.getService().getProvider().getId();
+        logger.fine("Waiting for provider lock: providerId="+providerId+", bookingId="+bookingId);
+        providers.lockById(providerId).orElseThrow(()->new InformationNotFoundException("Provider not found"));
+        entityManager.refresh(booking);
         if(booking.getStatus()!=BookingStatus.PENDING && booking.getStatus()!=BookingStatus.CONFIRMED){
             logger.warning("Reschedule rejected: bookingId="+bookingId+", bookingStatus="+booking.getStatus());
             throw new BookingConflictException("Booking can not be rescheduled");
@@ -72,6 +104,8 @@ public class BookingRescheduleService {
         audit.record(user, "Request Reschedule", "Booking", bookingId, "Requested "+date+" "+start);
         //Record successful request persistence.
         logger.info("Reschedule request saved: requestId="+request.getId()+", bookingId="+bookingId);
+        notifications.sendNotifications(booking.getService().getProvider().getUser().getId(),
+                "Reschedule request #"+request.getId()+" for booking #"+bookingId+": "+date+" at "+start);
         return request;
     }
 
@@ -163,7 +197,10 @@ public class BookingRescheduleService {
         request.setStatus(approve?RescheduleStatus.APPROVED:RescheduleStatus.REJECTED);
         audit.record(user, "Reschedule Decision", "Booking", b.getId(), approve?"Approved":"Rejected");
         //Record the final provider decision; the transaction may still roll back.
-        logger.info("Reschedule decision saved: requestId="+id+", bookingId="+b.getId()+", status="+requests.save(request).getStatus());
-        return requests.save(request);
+        request=requests.save(request);
+        logger.info("Reschedule decision saved: requestId="+id+", bookingId="+b.getId()+", status="+request.getStatus());
+        notifications.sendNotifications(b.getCustomer().getId(),
+                "Reschedule request #"+id+" for booking #"+b.getId()+" was "+request.getStatus().name().toLowerCase());
+        return request;
     }
 }

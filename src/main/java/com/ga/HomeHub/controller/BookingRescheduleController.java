@@ -10,11 +10,15 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import com.ga.HomeHub.model.enums.RescheduleStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.Map;
+import java.util.HashMap;
 
 @Tag(name="BookingReschedule", description="HomeHub bookingreschedule API endpoints")
 @RestController
@@ -23,7 +27,22 @@ import java.util.Map;
 public class BookingRescheduleController {
     private final BookingRescheduleService service;
     public record Request(@NotNull LocalDate date, @NotNull LocalTime start){}
-    public record Decision(@NotNull boolean approve){}
+    public record Decision(@NotNull Boolean approve){}
+
+    @Operation(summary="Get current homeowner or provider reschedule requests")
+    @GetMapping
+    @PreAuthorize("hasAnyRole('HOMEOWNER','PROVIDER')")
+    public Page<Map<String,Object>> getCurrentUserRequests(@RequestParam(required=false) RescheduleStatus status,
+                                                           @RequestParam(required=false) Long bookingId,Pageable pageable){
+        return service.getCurrentUserRequests(status,bookingId,pageable).map(this::response);
+    }
+
+    @Operation(summary="Get authorized reschedule request details")
+    @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('HOMEOWNER','PROVIDER')")
+    public Map<String,Object> getRequestById(@PathVariable Long id){
+        return response(service.getRequestById(id));
+    }
 
     @Operation(summary="Request reschedule")
     @ApiResponses(value={
@@ -54,6 +73,22 @@ public class BookingRescheduleController {
     }
 
     private Map<String,Object> response(BookingRescheduleRequest r){
-        return Map.of("id",r.getId(),"bookingId",r.getBooking().getId(),"date",r.getRequestedDate().toString(), "start",r.getRequestedStartTime().toString(),"status",r.getStatus().name());
+        Map<String,Object> result=new HashMap<>();
+        result.put("id",r.getId());
+        result.put("bookingId",r.getBooking().getId());
+        result.put("date",r.getRequestedDate().toString());
+        result.put("start",r.getRequestedStartTime().toString());
+        result.put("status",r.getStatus().name());
+        result.put("bookingDate",r.getBooking().getBookingDate());
+        result.put("bookingStartTime",r.getBooking().getStartTime());
+        result.put("bookingEndTime",r.getBooking().getEndTime());
+        result.put("bookingStatus",r.getBooking().getStatus());
+        result.put("serviceId",r.getBooking().getService().getId());
+        result.put("serviceName",r.getBooking().getService().getName());
+        result.put("providerId",r.getBooking().getService().getProvider().getId());
+        result.put("providerName",r.getBooking().getService().getProvider().getBusinessName());
+        result.put("createdAt",r.getCreatedAt());
+        result.put("updatedAt",r.getUpdatedAt());
+        return result;
     }
 }

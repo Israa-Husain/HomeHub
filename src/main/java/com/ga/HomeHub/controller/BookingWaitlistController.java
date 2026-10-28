@@ -17,6 +17,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 
 @Tag(name="BookingWaitlist", description="HomeHub bookingwaitlist API endpoints")
 @RestController
@@ -82,6 +83,14 @@ public class BookingWaitlistController {
     }
 
     private Map<String,Object> response(BookingWaitlist entry){
-        return Map.of("id",entry.getId(),"serviceId",entry.getService().getId(),"homeId",entry.getHome().getId(), "date",entry.getRequestedDate().toString(),"start",entry.getRequestedStartTime().toString(),"status",entry.getStatus().name());
+        Map<String,Object> result=new HashMap<>();
+        result.put("id",entry.getId());
+        result.put("serviceId",entry.getService().getId());
+        result.put("homeId",entry.getHome().getId());
+        result.put("date",entry.getRequestedDate().toString());
+        result.put("start",entry.getRequestedStartTime().toString());
+        result.put("status",entry.getStatus().name());
+        result.put("offerExpiresAt",entry.getOfferExpiresAt());
+        return result;
     }
 }
