@@ -18,6 +18,11 @@ public record BookingResponse(
         String note,
         String bookingType,
         Double finalPrice,
-        LocalDateTime responseDeadline
+        LocalDateTime responseDeadline,
+        Long providerId,
+        LocalDateTime reportDeadline,
+        boolean lateCancellation,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
 }

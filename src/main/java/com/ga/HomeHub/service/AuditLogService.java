@@ -5,6 +5,8 @@ import com.ga.HomeHub.model.User;
 import com.ga.HomeHub.repository.AuditLogRepository;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 @Service
 @AllArgsConstructor
@@ -20,5 +22,10 @@ public class AuditLogService {
         auditLog.setDescription(description);
 
         repository.save(auditLog);
+    }
+
+    //BookingService checks participant access before requesting these existing audit records.
+    public Page<AuditLog> getBookingHistory(Long bookingId,Pageable pageable){
+        return repository.findByEntityTypeAndEntityIdOrderByCreatedAtAscIdAsc("Booking",bookingId,pageable);
     }
 }

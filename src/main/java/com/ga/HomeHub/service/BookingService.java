@@ -21,7 +21,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
-import java.util.logging.Level;
+import java.util.ArrayList;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 
 @Service
@@ -56,6 +58,12 @@ public class BookingService {
 
         //Lock the correct provider before checking appointment availability.
         providerLocks.lockById(service.getProvider().getId()).orElseThrow(()->new InformationNotFoundException("Provider not found"));
+
+        //Recheck current eligibility and service terms after waiting for the existing provider lock.
+        entityManager.refresh(service);
+        entityManager.refresh(service.getCategory());
+        entityManager.refresh(service.getProvider());
+        entityManager.refresh(service.getProvider().getUser());
 
         //Log when the provider lock has been acquired.
         logger.fine("Provider lock acquired: providerId="+service.getProvider().getId());
@@ -104,10 +112,7 @@ public class BookingService {
             logger.warning("Booking denied: userId="+user.getId()+", homeId="+home.getId());
             throw new UnauthorizedException("Not your home");
         }
-        if(service.getStatus()!=ServiceStatus.ACTIVE || service.getProvider().getProviderStatus()!=ProviderStatus.APPROVED){
-            logger.warning("Booking rejected: unavailable serviceId="+service.getId()+", providerId="+service.getProvider().getId());
-            throw new BookingConflictException("Service unavailable");
-        }
+        validateServiceEligibility(service);
         if(!slot){
             logger.warning("Booking rejected: reason=Outside provider availability , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Requested time is outside the provider availability");
@@ -117,7 +122,8 @@ public class BookingService {
             throw new BookingConflictException("Provider is booked during this time");
         }
 
-        if(hasOverlappingOffer(service.getProvider().getId(),request.bookingDate(),request.startTime(),endTime)){
+        if(hasOverlappingOffer(waiting.findByServiceProviderIdAndRequestedDateAndStatus(
+                service.getProvider().getId(),request.bookingDate(),WaitlistStatus.OFFERED),request.startTime(),endTime)){
             logger.warning("Booking rejected: reason=Active waitlist offer , providerId="+service.getProvider().getId()+", date="+request.bookingDate()+", startTime="+request.startTime());
             throw new BookingConflictException("Appointment has an active waitlist offer");
         }
@@ -171,6 +177,57 @@ public class BookingService {
             throw new UnauthorizedException("You can not view this booking");
         }
         return booking;
+    }
+
+    //Reuse booking participant authorization; never expose the general audit table.
+    @Transactional(readOnly=true)
+    public Page<AuditLog> getBookingHistory(Long id,Pageable pageable){
+        getBookingById(id);
+        return audit.getBookingHistory(id,pageable);
+    }
+
+    //Return one-minute start-time suggestions, not reservations. Creation still rechecks under its provider lock.
+    @Transactional(readOnly=true)
+    public List<LocalTime> getAvailableAppointmentTimes(Long serviceId,LocalDate date,BookingType bookingType){
+        if(date==null || date.isBefore(LocalDate.now())){
+            throw new IllegalArgumentException("Please select a current or future date");
+        }
+        ServiceOffering service=services.findById(serviceId).orElseThrow(()->new InformationNotFoundException("Service not found"));
+        validateServiceEligibility(service);
+        BookingType type=bookingType==null?BookingType.NORMAL:bookingType;
+        if(type==BookingType.EMERGENCY && (!service.isEmergencyEnabled() || !service.getProvider().isEmergencyEnabled())){
+            throw new BookingConflictException("Emergency booking is not enabled for this provider and service");
+        }
+        int duration=service.getDurationMinutes();
+        if(duration<=0 || duration>=24*60){
+            throw new BookingConflictException("Service must end on the same day");
+        }
+        Long providerId=service.getProvider().getId();
+        List<Availability> windows=availability.findByProviderIdAndDateAndIsAvailableTrue(providerId,date);
+        List<Availability> blocked=availability.findByProviderIdAndDateAndTimeOffTrue(providerId,date);
+        List<Booking> appointments=repository.findByServiceProviderIdAndBookingDateAndStatusIn(providerId,date,
+                List.of(BookingStatus.PENDING,BookingStatus.CONFIRMED,BookingStatus.AWAITING_REPORT));
+        List<BookingWaitlist> offers=waiting.findByServiceProviderIdAndRequestedDateAndStatus(providerId,date,WaitlistStatus.OFFERED);
+        LocalDateTime now=LocalDateTime.now();
+        LocalDateTime earliest=type==BookingType.NORMAL?now.plusHours(24):now;
+        SortedSet<LocalTime> starts=new TreeSet<>();
+        for(Availability window:windows){
+            int firstMinute=(window.getStartTime().toSecondOfDay()+59)/60;
+            for(int minute=firstMinute;minute+duration<24*60 && (minute+duration)*60<=window.getEndTime().toSecondOfDay();minute++){
+                LocalTime start=LocalTime.ofSecondOfDay(minute*60L);
+                LocalTime end=start.plusMinutes(duration);
+                LocalDateTime appointmentStart=LocalDateTime.of(date,start);
+                if(!appointmentStart.isAfter(now) || appointmentStart.isBefore(earliest) || !window.contains(start,end)){
+                    continue;
+                }
+                boolean timeOff=blocked.stream().anyMatch(a->start.isBefore(a.getEndTime()) && end.isAfter(a.getStartTime()));
+                boolean booked=appointments.stream().anyMatch(b->start.isBefore(b.getEndTime()) && end.isAfter(b.getStartTime()));
+                if(!timeOff && !booked && !hasOverlappingOffer(offers,start,end)){
+                    starts.add(start);
+                }
+            }
+        }
+        return new ArrayList<>(starts);
     }
 
     @Transactional
@@ -244,10 +301,17 @@ public class BookingService {
         entityManager.refresh(booking);
 
         BookingStatus oldStatus=booking.getStatus();
+        // Capture decision time only after acquiring the lock and refreshing the booking.
+        LocalDateTime decisionTime=LocalDateTime.now();
 
-        if(oldStatus==BookingStatus.PENDING && booking.getResponseDeadline()!=null && !LocalDateTime.now().isBefore(booking.getResponseDeadline())){
+        if(oldStatus==BookingStatus.PENDING && booking.getResponseDeadline()!=null && !decisionTime.isBefore(booking.getResponseDeadline())){
             logger.warning("Booking status update rejected: bookingId="+id+", reason=Response deadline passed");
             throw new InvalidBookingStatusException("Provider response deadline has passed");
+        }
+
+        if(oldStatus==BookingStatus.PENDING && newStatus==BookingStatus.CONFIRMED
+                && !LocalDateTime.of(booking.getBookingDate(),booking.getStartTime()).isAfter(decisionTime)){
+            throw new InvalidBookingStatusException("Cannot approve a booking whose appointment has already started");
         }
 
         if(newStatus==BookingStatus.COMPLETED && !reports.existsByBookingId(id)){
@@ -318,15 +382,30 @@ public class BookingService {
                 booking.getEndTime(),
                 booking.getStatus(),
                 booking.getNote(),
-                booking.getBookingType().name(),
+                booking.getBookingType()==null ? null : booking.getBookingType().name(),
                 booking.getFinalPrice(),
-                booking.getResponseDeadline()
+                booking.getResponseDeadline(),
+                booking.getService().getProvider().getId(),
+                booking.getReportDeadline(),
+                booking.isLateCancellation(),
+                booking.getCreatedAt(),
+                booking.getUpdatedAt()
         );
     }
 
+    //Keep discovery and locked creation aligned without duplicating eligibility rules.
+    private void validateServiceEligibility(ServiceOffering service){
+        if(service.getStatus()!=ServiceStatus.ACTIVE || service.getCategory().getStatus()!=CategoryStatus.ACTIVE
+                || service.getProvider().getProviderStatus()!=ProviderStatus.APPROVED
+                || service.getProvider().getUser().getStatus()!=UserStatus.ACTIVE){
+            logger.warning("Booking rejected: unavailable serviceId="+service.getId()+", providerId="+service.getProvider().getId());
+            throw new BookingConflictException("Service unavailable");
+        }
+    }
+
     //Check unexpired offers for any service of the provider.
-    private boolean hasOverlappingOffer(Long providerId, LocalDate date, LocalTime start, LocalTime end){
-        for(BookingWaitlist offer:waiting.findByServiceProviderIdAndRequestedDateAndStatus(providerId,date, WaitlistStatus.OFFERED)){
+    private boolean hasOverlappingOffer(List<BookingWaitlist> offers,LocalTime start,LocalTime end){
+        for(BookingWaitlist offer:offers){
             if(offer.getOfferExpiresAt()==null || !offer.getOfferExpiresAt().isAfter(LocalDateTime.now())){
                 continue;
             }

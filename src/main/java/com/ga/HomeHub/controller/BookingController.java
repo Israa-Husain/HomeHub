@@ -4,7 +4,9 @@ import com.ga.HomeHub.dto.BookingRequest;
 import com.ga.HomeHub.dto.BookingResponse;
 import com.ga.HomeHub.dto.BookingStatusRequest;
 import com.ga.HomeHub.model.Booking;
+import com.ga.HomeHub.model.AuditLog;
 import com.ga.HomeHub.model.enums.BookingStatus;
+import com.ga.HomeHub.model.enums.BookingType;
 import com.ga.HomeHub.service.BookingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,6 +19,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Tag(name="Booking", description="HomeHub booking API endpoints")
 @RestController
@@ -51,6 +59,19 @@ public class BookingController {
     @GetMapping
     public Page<BookingResponse> getCurrentUserBookings(@RequestParam(required = false)BookingStatus status, Pageable pageable){
         return bookingService.getCurrentUserBookings(status, pageable).map(bookingService::toResponse);
+    }
+
+    @Operation(summary="Discover currently available appointment start times; no slot is reserved")
+    @GetMapping("/available-times")
+    public List<LocalTime> getAvailableAppointmentTimes(@RequestParam Long serviceId,@RequestParam LocalDate date,
+                                                       @RequestParam(defaultValue="NORMAL") BookingType bookingType){
+        return bookingService.getAvailableAppointmentTimes(serviceId,date,bookingType);
+    }
+
+    @Operation(summary="Get recorded booking audit events for an authorized participant or admin")
+    @GetMapping("/{bookingId}/history")
+    public Page<Map<String,Object>> getBookingHistory(@PathVariable Long bookingId,Pageable pageable){
+        return bookingService.getBookingHistory(bookingId,pageable).map(this::historyResponse);
     }
 
     @Operation(summary="Get booking by id")
@@ -92,5 +113,30 @@ public class BookingController {
     @PreAuthorize("hasAnyRole('ADMIN','PROVIDER')")
     public BookingResponse updateBookingStatus(@PathVariable Long bookingId, @Valid @RequestBody BookingStatusRequest request){
         return bookingService.toResponse(bookingService.updateBookingStatus(bookingId, request.status()));
+    }
+
+    //Do not return audit descriptions, linked user accounts, or private actor contact information.
+    private Map<String,Object> historyResponse(AuditLog event){
+        Map<String,Object> result=new HashMap<>();
+        result.put("id",event.getId());
+        result.put("action",event.getAction());
+        result.put("recordedAt",event.getCreatedAt());
+        result.put("actorId",event.getUser()==null?null:event.getUser().getId());
+        result.put("actorRole",event.getUser()==null?null:event.getUser().getRole());
+        BookingStatus status=null;
+        if("Create Booking".equals(event.getAction())){
+            status=BookingStatus.PENDING;
+        }else if("Cancel Booking".equals(event.getAction())){
+            status=BookingStatus.CANCELLED;
+        }else if("Update Booking status".equals(event.getAction())){
+            for(BookingStatus value:BookingStatus.values()){
+                if(("Booking status changed to "+value).equals(event.getDescription())){
+                    status=value;
+                    break;
+                }
+            }
+        }
+        result.put("status",status);
+        return result;
     }
 }

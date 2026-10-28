@@ -1,6 +1,7 @@
 package com.ga.HomeHub.controller;
 
 import com.ga.HomeHub.dto.AvailabilityRequest;
+import com.ga.HomeHub.dto.AvailabilityResponse;
 import com.ga.HomeHub.model.Availability;
 import com.ga.HomeHub.service.AvailabilityService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -33,8 +34,9 @@ public class AvailabilityController {
             @ApiResponse(responseCode="404",description="Resource not found")
     })
     @GetMapping
-    public List<Availability> getProviderAvailabilityByDate(@RequestParam Long providerId, @RequestParam LocalDate date){
-        return availabilityService.getProviderAvailabilityByDate(providerId, date);
+    @PreAuthorize("!#timeOff || hasRole('PROVIDER')")
+    public List<AvailabilityResponse> getProviderAvailabilityByDate(@RequestParam Long providerId, @RequestParam LocalDate date,@RequestParam(defaultValue="false") boolean timeOff){
+        return availabilityService.getProviderAvailabilityByDate(providerId,date,timeOff).stream().map(this::toResponse).toList();
     }
 
     @Operation(summary="Create availability")
@@ -47,8 +49,15 @@ public class AvailabilityController {
     })
     @PostMapping
     @PreAuthorize("hasRole('PROVIDER')")
-    public ResponseEntity<Availability> createAvailability(@Valid @RequestBody AvailabilityRequest request){
-        return ResponseEntity.status(201).body(availabilityService.createAvailability(request));
+    public ResponseEntity<AvailabilityResponse> createAvailability(@Valid @RequestBody AvailabilityRequest request){
+        return ResponseEntity.status(201).body(toResponse(availabilityService.createAvailability(request)));
+    }
+
+    @Operation(summary="Update own availability or blocked time period")
+    @PutMapping("/{availabilityId}")
+    @PreAuthorize("hasRole('PROVIDER')")
+    public AvailabilityResponse updateAvailability(@PathVariable Long availabilityId,@Valid @RequestBody AvailabilityRequest request){
+        return toResponse(availabilityService.updateAvailability(availabilityId,request));
     }
 
     @Operation(summary="Delete availability")
@@ -76,7 +85,13 @@ public class AvailabilityController {
     })
     @PostMapping("/time-off")
     @PreAuthorize("hasRole('PROVIDER')")
-    public ResponseEntity<Availability> blockTimeOff(@Valid @RequestBody AvailabilityRequest request){
-        return ResponseEntity.status(201).body(availabilityService.blockTimeOff(request));
+    public ResponseEntity<AvailabilityResponse> blockTimeOff(@Valid @RequestBody AvailabilityRequest request){
+        return ResponseEntity.status(201).body(toResponse(availabilityService.blockTimeOff(request)));
+    }
+
+    private AvailabilityResponse toResponse(Availability availability){
+        return new AvailabilityResponse(availability.getId(),availability.getProvider().getId(),availability.getDate(),
+                availability.getStartTime(),availability.getEndTime(),availability.isAvailable(),availability.isTimeOff(),
+                availability.getCreatedAt(),availability.getUpdatedAt());
     }
 }
