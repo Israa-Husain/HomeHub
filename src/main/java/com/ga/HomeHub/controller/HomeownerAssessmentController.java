@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,7 @@ import java.util.Map;
 @PreAuthorize("hasRole('PROVIDER')")
 public class HomeownerAssessmentController {
     private final HomeownerAssessmentService service;
-    public record AssessmentRequest(Integer rating,String comment){}
+    public record AssessmentRequest(Integer rating,@Size(max=3000) String comment){}
 
     @Operation(summary="Submit assessment")
     @ApiResponses(value={

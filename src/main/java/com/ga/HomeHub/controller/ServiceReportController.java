@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,7 @@ import java.util.Map;
 @RequestMapping("/api/reports")
 public class ServiceReportController {
     private final ServiceReportService service;
-    public record ReportRequest(@NotBlank String workDone, String materialsUsed, String recommendation){}
+    public record ReportRequest(@NotBlank @Size(max=3000) String workDone, @Size(max=3000) String materialsUsed, @Size(max=3000) String recommendation){}
 
     @Operation(summary="Get report")
     @ApiResponses(value={

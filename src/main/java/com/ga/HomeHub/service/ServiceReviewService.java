@@ -11,6 +11,8 @@ import com.ga.HomeHub.repository.BookingRepository;
 import com.ga.HomeHub.repository.ServiceReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -65,5 +67,11 @@ public class ServiceReviewService {
     @Transactional(readOnly=true)
     public List<ServiceReview> providerReviews(Long providerId){
         return reviews.findByBookingServiceProviderId(providerId);
+    }
+
+    //Resolve ownership from authentication, never from a caller-supplied homeowner ID.
+    @Transactional(readOnly=true)
+    public Page<ServiceReview> getMyReviews(Pageable pageable){
+        return reviews.findByHomeownerId(current.getCurrentUser().getId(),pageable);
     }
 }
