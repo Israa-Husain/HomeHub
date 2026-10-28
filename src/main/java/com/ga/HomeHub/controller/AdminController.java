@@ -3,6 +3,7 @@ package com.ga.HomeHub.controller;
 import com.ga.HomeHub.dto.ProviderResponse;
 import com.ga.HomeHub.dto.user.UserResponse;
 import com.ga.HomeHub.model.ProviderProfile;
+import com.ga.HomeHub.model.enums.ProviderStatus;
 import com.ga.HomeHub.service.ProviderService;
 import com.ga.HomeHub.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +16,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import java.util.Map;
+import java.util.HashMap;
 @Tag(name="Admin", description="HomeHub admin API endpoints")
 @RestController
 @AllArgsConstructor
@@ -34,6 +37,18 @@ public class AdminController {
     @GetMapping("/users")
     public Page<UserResponse> getAllUsers(Pageable pageable){
         return userService.getAllUsers(pageable);
+    }
+
+    @Operation(summary="List provider applications and optionally filter by existing status")
+    @GetMapping("/providers")
+    public Page<Map<String,Object>> getProviderApplications(@RequestParam(required=false) ProviderStatus status,Pageable pageable){
+        return providerService.getProviderApplications(status,pageable).map(this::applicationResponse);
+    }
+
+    @Operation(summary="Inspect provider application before approval")
+    @GetMapping("/providers/{providerId}")
+    public Map<String,Object> getProviderApplication(@PathVariable Long providerId){
+        return applicationResponse(providerService.getProviderApplication(providerId));
     }
 
     @Operation(summary="Approve provider")
@@ -62,5 +77,15 @@ public class AdminController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deactivateUser(@PathVariable Long userId){
         userService.deactivate(userId);
+    }
+
+    //Reuse existing safe response mappings; never serialize the applicant's User entity.
+    private Map<String,Object> applicationResponse(ProviderProfile provider){
+        Map<String,Object> result=new HashMap<>();
+        result.put("provider",providerService.toResponse(provider));
+        result.put("applicant",UserResponse.from(provider.getUser()));
+        result.put("createdAt",provider.getCreatedAt());
+        result.put("updatedAt",provider.getUpdatedAt());
+        return result;
     }
 }

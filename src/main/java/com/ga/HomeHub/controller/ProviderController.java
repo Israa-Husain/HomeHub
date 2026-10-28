@@ -50,6 +50,20 @@ public class ProviderController {
         return providerService.toResponse(providerService.getCurrentProviderProfile());
     }
 
+    //Only the current provider can edit their business profile.
+    @Operation(summary="Update current provider business profile")
+    @PutMapping("/profile")
+    @PreAuthorize("hasRole('PROVIDER')")
+    public ProviderResponse updateProviderProfile(@Valid @RequestBody ProviderRequest request){
+        return providerService.toResponse(providerService.updateProviderProfile(request));
+    }
+
+    @Operation(summary="Get approved provider business details")
+    @GetMapping("/{providerId}")
+    public ProviderResponse getProviderDetails(@PathVariable Long providerId){
+        return providerService.getProviderDetails(providerId);
+    }
+
     public record PortfolioRequest(String description,boolean emergencyEnabled){}
     @Operation(summary="Update portfolio")
     @ApiResponses(value={

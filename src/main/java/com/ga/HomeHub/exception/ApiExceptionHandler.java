@@ -3,7 +3,11 @@ package com.ga.HomeHub.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -39,13 +43,29 @@ public class ApiExceptionHandler {
         return out(HttpStatus.UNAUTHORIZED, e, r);
     }
 
+    //Keep method-security denials as authorization errors rather than generic server failures.
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiError> accessDenied(AccessDeniedException e,HttpServletRequest r){
+        return out(HttpStatus.FORBIDDEN,new UnauthorizedException("You don't have permission to perform this action"),r);
+    }
+
     @ExceptionHandler({BookingConflictException.class, InvalidBookingStatusException.class})
     ResponseEntity<ApiError> booking(Exception e, HttpServletRequest r) {
         return out(HttpStatus.UNPROCESSABLE_ENTITY, e, r);
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
+    @ExceptionHandler({IllegalArgumentException.class,MissingServletRequestParameterException.class,MethodArgumentTypeMismatchException.class,HttpMessageNotReadableException.class})
     ResponseEntity<ApiError> badRequest(Exception e, HttpServletRequest r) {
+        //Do not echo rejected values, Java types, or conversion exception details.
+        if(e instanceof HttpMessageNotReadableException){
+            return out(HttpStatus.BAD_REQUEST,new IllegalArgumentException("Request body is missing or contains invalid JSON values"),r);
+        }
+        if(e instanceof MissingServletRequestParameterException missing){
+            return out(HttpStatus.BAD_REQUEST,new IllegalArgumentException("Required parameter is missing: "+missing.getParameterName()),r);
+        }
+        if(e instanceof MethodArgumentTypeMismatchException mismatch){
+            return out(HttpStatus.BAD_REQUEST,new IllegalArgumentException("Invalid value for parameter: "+mismatch.getName()),r);
+        }
         return out(HttpStatus.BAD_REQUEST, e, r);
     }
 

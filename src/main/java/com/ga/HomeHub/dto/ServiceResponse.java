@@ -7,6 +7,14 @@ public record ServiceResponse(
         Double price,
         Integer durationMinutes,
         String categoryName,
-        String providerName
+        String providerName,
+        Long categoryId,
+        Long providerId,
+        String status,
+        String categoryStatus,
+        String providerStatus,
+        boolean emergencyEnabled,
+        boolean providerEmergencyEnabled,
+        boolean emergencyEligible
 ) {
 }

@@ -33,8 +33,16 @@ public class ServiceOfferingController {
             @ApiResponse(responseCode="404",description="Resource not found")
     })
     @GetMapping
-    public Page<ServiceResponse> getAllServiceOffering(@RequestParam(required = false) Long categoryId, Pageable pageable){
-        return serviceOfferingService.getAllServiceOffering(categoryId, pageable);
+    public Page<ServiceResponse> getAllServiceOffering(@RequestParam(required = false) Long categoryId, @RequestParam(required = false) Long providerId, Pageable pageable){
+        return serviceOfferingService.getAllServiceOffering(categoryId, providerId, pageable);
+    }
+
+    //Providers can manage their own offerings regardless of active status.
+    @Operation(summary="Get current provider services including inactive offerings")
+    @GetMapping("/mine")
+    @PreAuthorize("hasRole('PROVIDER')")
+    public Page<ServiceResponse> getCurrentProviderServices(Pageable pageable){
+        return serviceOfferingService.getCurrentProviderServices(pageable);
     }
 
     @Operation(summary="Get service offering by id")
@@ -107,10 +115,11 @@ public class ServiceOfferingController {
     public Page<ServiceResponse> searchServices(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) Long categoryId,
+            @RequestParam(required = false) Long providerId,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
             Pageable pageable){
 
-        return serviceOfferingService.searchServices(name, categoryId, minPrice, maxPrice, pageable);
+        return serviceOfferingService.searchServices(name, categoryId, providerId, minPrice, maxPrice, pageable);
     }
 }
