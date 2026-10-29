@@ -793,3 +793,8 @@ The project was built incrementally: design models and relationships; implement 
 6. **Testing:** Validate business rules, concurrency scenarios, and asynchronous execution.
 7. **Logging:** Track important operations, failures, and concurrency behavior.
 8. **Documentation:** Improve Swagger documentation and maintain the project README.
+
+
+---
+###ERD
+projectDirectory/HomeHub-ERD.html
