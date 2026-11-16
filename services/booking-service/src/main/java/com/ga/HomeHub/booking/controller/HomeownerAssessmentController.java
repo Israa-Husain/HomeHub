@@ -1,0 +1,70 @@
+package com.ga.HomeHub.booking.controller;
+
+import com.ga.HomeHub.booking.model.HomeownerAssessment;
+import com.ga.HomeHub.booking.service.HomeownerAssessmentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Size;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@Tag(name="HomeownerAssessment", description="HomeHub homeownerassessment API endpoints")
+@RestController
+@RequiredArgsConstructor
+@RequestMapping("/api/assessments")
+@PreAuthorize("hasRole('PROVIDER')")
+public class HomeownerAssessmentController {
+    private final HomeownerAssessmentService service;
+    //Validate supplied ratings while keeping them optional.
+    public record AssessmentRequest(@Min(1) @Max(5) Integer rating,@Size(max=3000) String comment){}
+
+    @Operation(summary="Submit assessment")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found"),
+            @ApiResponse(responseCode="503",description="Account verification unavailable")
+    })
+    @PostMapping("/booking/{bookingId}")
+    public Map<String, Object> submitAssessment(@PathVariable Long bookingId, @Valid @RequestBody AssessmentRequest request){
+        return response(service.submitHomeownerAssessment(bookingId, request.rating(), request.comment()));
+    }
+
+    @Operation(summary="Get assessment")
+    @ApiResponses(value={
+            @ApiResponse(responseCode="200",description="Request completed successfully"),
+            @ApiResponse(responseCode="400",description="Invalid request"),
+            @ApiResponse(responseCode="401",description="Authentication required"),
+            @ApiResponse(responseCode="403",description="Access denied"),
+            @ApiResponse(responseCode="404",description="Resource not found"),
+            @ApiResponse(responseCode="503",description="Account verification unavailable")
+    })
+    @GetMapping("/booking/{bookingId}")
+    public List<Map<String,Object>> getAssessment(@PathVariable Long bookingId){
+        return service.getHomeownerAssessments(bookingId).stream().map(this::response).toList();
+    }
+
+    private Map<String, Object> response(HomeownerAssessment assessment){
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", assessment.getId());
+        result.put("rating", assessment.getRating());
+        result.put("comment", assessment.getComment());
+        return result;
+    }
+}
