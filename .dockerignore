@@ -1,0 +1,17 @@
+.git
+.idea
+.ai
+
+**/target
+**/uploads
+**/*.log
+**/*.zip
+**/*.class
+
+.env
+.env.*
+!.env.example
+
+**/src/test
+
+docs
