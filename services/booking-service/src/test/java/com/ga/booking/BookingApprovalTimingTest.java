@@ -1,30 +1,64 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.exception.InvalidBookingStatusException;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.*;
-import com.ga.HomeHub.model.enums.*;
-import com.ga.HomeHub.repository.BookingRepository;
-import com.ga.HomeHub.repository.ProviderProfileRepository;
-import com.ga.HomeHub.repository.ServiceReportRepository;
-import com.ga.HomeHub.service.*;
+import com.ga.HomeHub.booking.client.AccountDirectory;
+import com.ga.HomeHub.booking.config.BookingPolicyProperties;
+import com.ga.HomeHub.booking.exception.InvalidBookingStatusException;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.Booking;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.ServiceOffering;
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.BookingStatus;
+import com.ga.HomeHub.booking.model.enums.Role;
+import com.ga.HomeHub.booking.repository.AvailabilityRepository;
+import com.ga.HomeHub.booking.repository.BookingRepository;
+import com.ga.HomeHub.booking.repository.BookingWaitlistRepository;
+import com.ga.HomeHub.booking.repository.ProviderProfileRepository;
+import com.ga.HomeHub.booking.repository.ServiceReportRepository;
+import com.ga.HomeHub.booking.service.AuditLogService;
+import com.ga.HomeHub.booking.service.BookingService;
+import com.ga.HomeHub.booking.service.BookingWaitlistService;
+import com.ga.HomeHub.booking.service.CurrentUserService;
+import com.ga.HomeHub.booking.service.EmailService;
+import com.ga.HomeHub.booking.service.NotificationService;
+import com.ga.HomeHub.booking.validation.ProviderScheduleValidator;
+import com.ga.HomeHub.booking.validation.ServiceEligibilityValidator;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 // No Spring application context, JDBC connection, scheduling or real records.
 @ExtendWith(MockitoExtension.class)
 class BookingApprovalTimingTest {
+    @Mock private AccountDirectory fixtureAccounts;
+
+    @Mock private BookingWaitlistRepository fixtureWaiting;
+
+    @Mock private AvailabilityRepository fixtureAvailability;
+
     @Mock private BookingRepository repository;
     @Mock private ProviderProfileRepository providerLocks;
     @Mock private CurrentUserService current;
@@ -112,7 +146,7 @@ class BookingApprovalTimingTest {
     @Test
     void clockIsReadAfterLockAndRefreshEvenWhenAppointmentWasInitiallyFuture(){
         appointment(now.plusSeconds(1));authorized(Role.PROVIDER);
-        java.util.concurrent.atomic.AtomicBoolean refreshed=new java.util.concurrent.atomic.AtomicBoolean();
+        AtomicBoolean refreshed=new AtomicBoolean();
         doAnswer(invocation->{refreshed.set(true);return null;}).when(entityManager).refresh(booking);
         try(var time=mockStatic(LocalDateTime.class,CALLS_REAL_METHODS)){
             time.when(LocalDateTime::now).thenAnswer(invocation->refreshed.get()?now.plusSeconds(1):now);
@@ -208,5 +242,13 @@ class BookingApprovalTimingTest {
         assertEquals(BookingStatus.PENDING,booking.getStatus());
         verify(repository,never()).save(any());
         verifyNoInteractions(audit,notification,email,waitlist,reports);
+    }
+
+    @BeforeEach
+    void wireCurrentProductionDependencies(){
+        Mockito.lenient().when(fixtureAccounts.isActive(ArgumentMatchers.any())).thenReturn(true);
+        ReflectionTestUtils.setField(service,"schedule",new ProviderScheduleValidator(fixtureAvailability,repository,fixtureWaiting));
+        ReflectionTestUtils.setField(service,"policy",new BookingPolicyProperties());
+        ReflectionTestUtils.setField(service,"eligibility",new ServiceEligibilityValidator(entityManager,fixtureAccounts));
     }
 }

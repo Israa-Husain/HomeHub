@@ -1,20 +1,26 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.controller.AvailabilityController;
-import com.ga.HomeHub.controller.BookingController;
-import com.ga.HomeHub.exception.ApiExceptionHandler;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.exception.BookingConflictException;
-import com.ga.HomeHub.model.AuditLog;
-import com.ga.HomeHub.model.Availability;
-import com.ga.HomeHub.model.ProviderProfile;
-import com.ga.HomeHub.model.User;
-import com.ga.HomeHub.model.enums.BookingType;
-import com.ga.HomeHub.model.enums.Role;
-import com.ga.HomeHub.service.AvailabilityService;
-import com.ga.HomeHub.service.BookingService;
-import com.ga.HomeHub.service.AuditLogService;
-import com.ga.HomeHub.repository.AuditLogRepository;
+import com.ga.HomeHub.booking.controller.AvailabilityController;
+import com.ga.HomeHub.booking.controller.BookingController;
+import com.ga.HomeHub.booking.exception.ApiExceptionHandler;
+import com.ga.HomeHub.booking.exception.BookingConflictException;
+import com.ga.HomeHub.booking.exception.InvalidBookingStatusException;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.AuditLog;
+import com.ga.HomeHub.booking.model.Availability;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.BookingStatus;
+import com.ga.HomeHub.booking.model.enums.BookingType;
+import com.ga.HomeHub.booking.model.enums.Role;
+import com.ga.HomeHub.booking.repository.AuditLogRepository;
+import com.ga.HomeHub.booking.service.AuditLogService;
+import com.ga.HomeHub.booking.service.AvailabilityService;
+import com.ga.HomeHub.booking.service.BookingService;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,15 +38,21 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 //Keep Phase 1 tests unchanged; these fixtures target only Phase 2 HTTP contracts and permissions.
 @SpringJUnitConfig(AvailabilityBookingControllerTest.Config.class)
@@ -226,7 +238,7 @@ class AvailabilityBookingControllerTest{
     void parameterHandlerCorrectionPreservesBusinessConflictResponse() throws Exception{
         when(bookings.getAvailableAppointmentTimes(1L,date,BookingType.NORMAL)).thenThrow(new BookingConflictException("Service unavailable"));
         mvc.perform(get("/api/booking/available-times").param("serviceId","1").param("date",date.toString()))
-                .andExpect(status().isUnprocessableEntity())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Service unavailable"));
     }
 
@@ -234,12 +246,12 @@ class AvailabilityBookingControllerTest{
     void lateApprovalReturnsMeaningful422ForProviderAndAdmin() throws Exception{
         for(String role:List.of("PROVIDER","ADMIN")){
             authenticate(role);
-            doThrow(new com.ga.HomeHub.exception.InvalidBookingStatusException(
+            doThrow(new InvalidBookingStatusException(
                     "Cannot approve a booking whose appointment has already started"))
-                    .when(bookings).updateBookingStatus(5L,com.ga.HomeHub.model.enums.BookingStatus.CONFIRMED);
+                    .when(bookings).updateBookingStatus(5L,BookingStatus.CONFIRMED);
             mvc.perform(put("/api/booking/5/status").contentType("application/json")
                             .content("{\"status\":\"CONFIRMED\"}"))
-                    .andExpect(status().isUnprocessableEntity())
+                    .andExpect(status().isConflict())
                     .andExpect(jsonPath("$.message").value("Cannot approve a booking whose appointment has already started"));
         }
     }
@@ -247,11 +259,11 @@ class AvailabilityBookingControllerTest{
     @Test
     void expiredApprovalDeadlineRemainsMeaningful422() throws Exception{
         authenticate("PROVIDER");
-        when(bookings.updateBookingStatus(5L,com.ga.HomeHub.model.enums.BookingStatus.CONFIRMED))
-                .thenThrow(new com.ga.HomeHub.exception.InvalidBookingStatusException("Provider response deadline has passed"));
+        when(bookings.updateBookingStatus(5L,BookingStatus.CONFIRMED))
+                .thenThrow(new InvalidBookingStatusException("Provider response deadline has passed"));
         mvc.perform(put("/api/booking/5/status").contentType("application/json")
                         .content("{\"status\":\"CONFIRMED\"}"))
-                .andExpect(status().isUnprocessableEntity())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.message").value("Provider response deadline has passed"));
     }
 

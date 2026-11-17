@@ -1,38 +1,75 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.exception.BookingConflictException;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.*;
-import com.ga.HomeHub.model.enums.*;
-import com.ga.HomeHub.repository.*;
-import com.ga.HomeHub.service.BookingWaitlistService;
-import com.ga.HomeHub.service.CurrentUserService;
-import com.ga.HomeHub.service.NotificationService;
+import com.ga.HomeHub.booking.client.AccountDirectory;
+import com.ga.HomeHub.booking.config.BookingPolicyProperties;
+import com.ga.HomeHub.booking.exception.BookingConflictException;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.Availability;
+import com.ga.HomeHub.booking.model.Booking;
+import com.ga.HomeHub.booking.model.BookingWaitlist;
+import com.ga.HomeHub.booking.model.Category;
+import com.ga.HomeHub.booking.model.Home;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.ServiceOffering;
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.BookingStatus;
+import com.ga.HomeHub.booking.model.enums.BookingType;
+import com.ga.HomeHub.booking.model.enums.ProviderStatus;
+import com.ga.HomeHub.booking.model.enums.WaitlistStatus;
+import com.ga.HomeHub.booking.repository.AvailabilityRepository;
+import com.ga.HomeHub.booking.repository.BookingRepository;
+import com.ga.HomeHub.booking.repository.BookingWaitlistRepository;
+import com.ga.HomeHub.booking.repository.HomeRepository;
+import com.ga.HomeHub.booking.repository.ProviderProfileRepository;
+import com.ga.HomeHub.booking.repository.ServiceOfferingRepository;
+import com.ga.HomeHub.booking.service.AuditLogService;
+import com.ga.HomeHub.booking.service.BookingWaitlistService;
+import com.ga.HomeHub.booking.service.CurrentUserService;
+import com.ga.HomeHub.booking.service.NotificationService;
+import com.ga.HomeHub.booking.validation.ProviderScheduleValidator;
+import com.ga.HomeHub.booking.validation.ServiceEligibilityValidator;
 import jakarta.persistence.EntityManager;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.SimpleTransactionStatus;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.SimpleTransactionStatus;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 //Run the existing waitlist service to protect FIFO, expiration and claim behavior; production logic is unchanged.
 @ExtendWith(MockitoExtension.class)
 class BookingWaitlistServiceTest{
+    @Mock private AuditLogService fixtureAudit;
+    @Mock private AccountDirectory fixtureAccounts;
+
     @Mock private BookingWaitlistRepository waiting;
     @Mock private ServiceOfferingRepository services;
     @Mock private HomeRepository homes;
@@ -61,6 +98,7 @@ class BookingWaitlistServiceTest{
         provider.setProviderStatus(ProviderStatus.APPROVED);
         offering=new ServiceOffering();
         offering.setId(4L);
+        offering.setCategory(new Category());
         offering.setProvider(provider);
         offering.setDurationMinutes(60);
         offering.setPrice(50.0);
@@ -85,6 +123,7 @@ class BookingWaitlistServiceTest{
         second.setHome(entry.getHome());
         ServiceOffering otherService=new ServiceOffering();
         otherService.setId(10L);
+        otherService.setCategory(new Category());
         otherService.setProvider(provider);
         otherService.setDurationMinutes(90);
         second.setService(otherService);
@@ -105,7 +144,7 @@ class BookingWaitlistServiceTest{
         assertFalse(entry.getOfferExpiresAt().isAfter(after.plusMinutes(15)));
         verify(waiting).save(entry);
         verify(waiting,never()).save(second);
-        verify(notifications).sendNotifications(eq(1L),contains("expires in 15 minutes"));
+        verify(notifications).sendNotifications(eq(1L),eq("Waitlist slot offered for service #4; expires at "+entry.getOfferExpiresAt()));
     }
 
     @Test
@@ -189,5 +228,14 @@ class BookingWaitlistServiceTest{
         window.setStartTime(LocalTime.of(9,0));
         window.setEndTime(LocalTime.of(17,0));
         when(availability.findByProviderIdAndDateAndIsAvailableTrue(3L,entry.getRequestedDate())).thenReturn(List.of(window));
+    }
+
+    @BeforeEach
+    void wireCurrentProductionDependencies(){
+        Mockito.lenient().when(fixtureAccounts.isActive(ArgumentMatchers.any())).thenReturn(true);
+        ReflectionTestUtils.setField(service,"schedule",new ProviderScheduleValidator(availability,bookings,waiting));
+        ReflectionTestUtils.setField(service,"policy",new BookingPolicyProperties());
+        ReflectionTestUtils.setField(service,"eligibility",new ServiceEligibilityValidator(entityManager,fixtureAccounts));
+        ReflectionTestUtils.setField(service,"accounts",fixtureAccounts);
     }
 }

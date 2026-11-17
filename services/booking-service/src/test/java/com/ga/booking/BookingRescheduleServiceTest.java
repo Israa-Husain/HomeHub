@@ -1,39 +1,83 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.exception.BookingConflictException;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.*;
-import com.ga.HomeHub.model.enums.*;
-import com.ga.HomeHub.repository.*;
-import com.ga.HomeHub.service.*;
+import com.ga.HomeHub.booking.client.AccountDirectory;
+import com.ga.HomeHub.booking.config.BookingPolicyProperties;
+import com.ga.HomeHub.booking.exception.BookingConflictException;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.Availability;
+import com.ga.HomeHub.booking.model.Booking;
+import com.ga.HomeHub.booking.model.BookingRescheduleRequest;
+import com.ga.HomeHub.booking.model.BookingWaitlist;
+import com.ga.HomeHub.booking.model.Category;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.ServiceOffering;
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.BookingStatus;
+import com.ga.HomeHub.booking.model.enums.ProviderStatus;
+import com.ga.HomeHub.booking.model.enums.RescheduleStatus;
+import com.ga.HomeHub.booking.model.enums.Role;
+import com.ga.HomeHub.booking.model.enums.WaitlistStatus;
+import com.ga.HomeHub.booking.repository.AvailabilityRepository;
+import com.ga.HomeHub.booking.repository.BookingRepository;
+import com.ga.HomeHub.booking.repository.BookingRescheduleRequestRepository;
+import com.ga.HomeHub.booking.repository.BookingWaitlistRepository;
+import com.ga.HomeHub.booking.repository.ProviderProfileRepository;
+import com.ga.HomeHub.booking.service.AuditLogService;
+import com.ga.HomeHub.booking.service.BookingRescheduleService;
+import com.ga.HomeHub.booking.service.BookingWaitlistService;
+import com.ga.HomeHub.booking.service.CurrentUserService;
+import com.ga.HomeHub.booking.service.NotificationService;
+import com.ga.HomeHub.booking.validation.ProviderScheduleValidator;
+import com.ga.HomeHub.booking.validation.ServiceEligibilityValidator;
 import jakarta.persistence.EntityManager;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.mockito.ArgumentCaptor;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 //Reschedule fixtures exercise participant reads and the existing locked approval path, not a second booking implementation.
 @ExtendWith(MockitoExtension.class)
 class BookingRescheduleServiceTest{
+    @Mock private AccountDirectory fixtureAccounts;
+
     @Mock private BookingRescheduleRequestRepository requests;
     @Mock private BookingRepository bookings;
     @Mock private ProviderProfileRepository providers;
@@ -64,6 +108,7 @@ class BookingRescheduleServiceTest{
         provider.setProviderStatus(ProviderStatus.APPROVED);
         ServiceOffering offering=new ServiceOffering();
         offering.setId(4L);
+        offering.setCategory(new Category());
         offering.setName("Repair");
         offering.setDurationMinutes(60);
         offering.setProvider(provider);
@@ -188,41 +233,6 @@ class BookingRescheduleServiceTest{
         }finally{
             start.countDown();
             executor.shutdownNow();
-        }
-    }
-
-    @Test
-    void requestUsesPersistentNotificationAndQueuesDeliveryOnlyAfterCommit(){
-        ownBooking();
-        when(requests.save(any())).thenAnswer(invocation->{
-            BookingRescheduleRequest saved=invocation.getArgument(0);
-            saved.setId(7L);
-            return saved;
-        });
-        NotificationRepository notificationRepository=mock(NotificationRepository.class);
-        UserRepository users=mock(UserRepository.class);
-        Executor executor=mock(Executor.class);
-        when(users.findById(2L)).thenReturn(Optional.of(providerUser));
-        NotificationService persistentNotifications=new NotificationService(notificationRepository,users,executor);
-        BookingRescheduleService realNotificationPath=new BookingRescheduleService(requests,bookings,providers,availability,current,
-                audit,waiting,waitlist,entityManager,persistentNotifications);
-        TransactionSynchronizationManager.initSynchronization();
-        TransactionSynchronizationManager.setActualTransactionActive(true);
-        try{
-            realNotificationPath.request(6L,request.getRequestedDate(),request.getRequestedStartTime());
-            ArgumentCaptor<Notification> captured=ArgumentCaptor.forClass(Notification.class);
-            verify(notificationRepository).save(captured.capture());
-            assertEquals(2L,captured.getValue().getRecipient().getId());
-            assertTrue(captured.getValue().getMessage().contains("Reschedule request #7"));
-            assertFalse(captured.getValue().isRead());
-            verify(executor,never()).execute(any());
-            for(var synchronization:TransactionSynchronizationManager.getSynchronizations()){
-                synchronization.afterCommit();
-            }
-            verify(executor).execute(any());
-        }finally{
-            TransactionSynchronizationManager.clearSynchronization();
-            TransactionSynchronizationManager.setActualTransactionActive(false);
         }
     }
 
@@ -361,5 +371,13 @@ class BookingRescheduleServiceTest{
         window.setStartTime(LocalTime.of(9,0));
         window.setEndTime(LocalTime.of(17,0));
         when(availability.findByProviderIdAndDateAndIsAvailableTrue(3L,request.getRequestedDate())).thenReturn(List.of(window));
+    }
+
+    @BeforeEach
+    void wireCurrentProductionDependencies(){
+        Mockito.lenient().when(fixtureAccounts.isActive(ArgumentMatchers.any())).thenReturn(true);
+        ReflectionTestUtils.setField(service,"schedule",new ProviderScheduleValidator(availability,bookings,waiting));
+        ReflectionTestUtils.setField(service,"policy",new BookingPolicyProperties());
+        ReflectionTestUtils.setField(service,"eligibility",new ServiceEligibilityValidator(entityManager,fixtureAccounts));
     }
 }

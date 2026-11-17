@@ -1,14 +1,25 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.controller.BookingRescheduleController;
-import com.ga.HomeHub.controller.BookingWaitlistController;
-import com.ga.HomeHub.exception.ApiExceptionHandler;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.*;
-import com.ga.HomeHub.model.enums.*;
-import com.ga.HomeHub.service.BookingRescheduleService;
-import com.ga.HomeHub.service.BookingService;
-import com.ga.HomeHub.service.BookingWaitlistService;
+import com.ga.HomeHub.booking.controller.BookingRescheduleController;
+import com.ga.HomeHub.booking.controller.BookingWaitlistController;
+import com.ga.HomeHub.booking.exception.ApiExceptionHandler;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.Booking;
+import com.ga.HomeHub.booking.model.BookingRescheduleRequest;
+import com.ga.HomeHub.booking.model.BookingWaitlist;
+import com.ga.HomeHub.booking.model.Home;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.ServiceOffering;
+import com.ga.HomeHub.booking.model.enums.RescheduleStatus;
+import com.ga.HomeHub.booking.model.enums.WaitlistStatus;
+import com.ga.HomeHub.booking.service.BookingRescheduleService;
+import com.ga.HomeHub.booking.service.BookingService;
+import com.ga.HomeHub.booking.service.BookingWaitlistService;
+import com.jayway.jsonpath.JsonPath;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,18 +37,19 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.List;
-import com.jayway.jsonpath.JsonPath;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 //Phase 3 HTTP/security fixtures remain separate from service and database behavior tests.
 @SpringJUnitConfig(RescheduleWaitlistControllerTest.Config.class)

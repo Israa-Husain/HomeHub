@@ -1,19 +1,25 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.dto.AvailabilityRequest;
-import com.ga.HomeHub.exception.BookingConflictException;
-import com.ga.HomeHub.exception.InformationNotFoundException;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.Availability;
-import com.ga.HomeHub.model.Booking;
-import com.ga.HomeHub.model.ProviderProfile;
-import com.ga.HomeHub.repository.AvailabilityRepository;
-import com.ga.HomeHub.repository.BookingRepository;
-import com.ga.HomeHub.repository.ProviderProfileRepository;
-import com.ga.HomeHub.service.AvailabilityService;
-import com.ga.HomeHub.service.BookingWaitlistService;
-import com.ga.HomeHub.service.ProviderService;
+import com.ga.HomeHub.booking.dto.AvailabilityRequest;
+import com.ga.HomeHub.booking.exception.BookingConflictException;
+import com.ga.HomeHub.booking.exception.InformationNotFoundException;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.Availability;
+import com.ga.HomeHub.booking.model.Booking;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.repository.AvailabilityRepository;
+import com.ga.HomeHub.booking.repository.BookingRepository;
+import com.ga.HomeHub.booking.repository.BookingWaitlistRepository;
+import com.ga.HomeHub.booking.repository.ProviderProfileRepository;
+import com.ga.HomeHub.booking.service.AvailabilityService;
+import com.ga.HomeHub.booking.service.BookingWaitlistService;
+import com.ga.HomeHub.booking.service.ProviderService;
+import com.ga.HomeHub.booking.validation.ProviderScheduleValidator;
 import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,19 +27,31 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 //Period management needs separate fixtures from booking creation; no development database is touched.
 @ExtendWith(MockitoExtension.class)
 class AvailabilityServiceTest{
+    @Mock private BookingWaitlistRepository fixtureWaiting;
+
     @Mock private AvailabilityRepository repository;
     @Mock private ProviderService providers;
     @Mock private ProviderProfileRepository providerLocks;
@@ -289,6 +307,7 @@ class AvailabilityServiceTest{
 
     @Test
     void blockingTimeOffRetainsLockAndConflictValidation(){
+        when(providerLocks.lockById(11L)).thenReturn(Optional.of(provider));
         when(providers.getCurrentProviderProfile()).thenReturn(provider);
         when(bookings.findByServiceProviderIdAndBookingDateAndStatusIn(anyLong(),any(),anyList())).thenReturn(List.of(booking(10,11)));
         assertThrows(BookingConflictException.class,()->service.blockTimeOff(request(9,12)));
@@ -313,5 +332,10 @@ class AvailabilityServiceTest{
         booking.setStartTime(LocalTime.of(start,0));
         booking.setEndTime(LocalTime.of(end,0));
         return booking;
+    }
+
+    @BeforeEach
+    void wireCurrentProductionDependencies(){
+        ReflectionTestUtils.setField(service,"schedule",new ProviderScheduleValidator(repository,bookings,fixtureWaiting));
     }
 }

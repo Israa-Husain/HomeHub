@@ -1,18 +1,17 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.controller.ProviderController;
-import com.ga.HomeHub.controller.AdminController;
-import com.ga.HomeHub.controller.ServiceOfferingController;
-import com.ga.HomeHub.dto.ProviderResponse;
-import com.ga.HomeHub.dto.ServiceRequest;
-import com.ga.HomeHub.exception.ApiExceptionHandler;
-import com.ga.HomeHub.service.ProviderService;
-import com.ga.HomeHub.service.ServiceOfferingService;
-import com.ga.HomeHub.service.UserService;
-import com.ga.HomeHub.model.ProviderProfile;
-import com.ga.HomeHub.model.User;
-import com.ga.HomeHub.model.enums.ProviderStatus;
-import org.springframework.data.domain.PageImpl;
+import com.ga.HomeHub.booking.controller.AdminController;
+import com.ga.HomeHub.booking.controller.ProviderController;
+import com.ga.HomeHub.booking.controller.ServiceOfferingController;
+import com.ga.HomeHub.booking.dto.ProviderResponse;
+import com.ga.HomeHub.booking.dto.ServiceRequest;
+import com.ga.HomeHub.booking.exception.ApiExceptionHandler;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.ProviderStatus;
+import com.ga.HomeHub.booking.service.ProviderService;
+import com.ga.HomeHub.booking.service.ServiceOfferingService;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -31,13 +31,20 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 //Exercise real controller validation and Spring method security without connecting to development data.
 @SpringJUnitConfig(ServiceProviderControllerTest.Config.class)
@@ -65,14 +72,9 @@ class ServiceProviderControllerTest {
             return new ProviderController(providers);
         }
 
-        @Bean
-        UserService users(){
-            return mock(UserService.class);
-        }
-
-        @Bean
-        AdminController adminController(UserService users,ProviderService providers){
-            return new AdminController(users,providers);
+@Bean
+        AdminController adminController(ProviderService providers){
+            return new AdminController(providers);
         }
     }
 
@@ -196,7 +198,7 @@ class ServiceProviderControllerTest {
         applicant.setFirstName("Applicant");
         applicant.setLastName("Name");
         applicant.setEmailAddress("applicant@example.test");
-        applicant.setPasswordHash("must-not-be-exposed");
+
         ProviderProfile provider=new ProviderProfile();
         provider.setId(11L);
         provider.setUser(applicant);

@@ -1,9 +1,19 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.controller.*;
-import com.ga.HomeHub.exception.ApiExceptionHandler;
-import com.ga.HomeHub.model.*;
-import com.ga.HomeHub.service.*;
+import com.ga.HomeHub.booking.controller.HomeownerAssessmentController;
+import com.ga.HomeHub.booking.controller.ServiceReportController;
+import com.ga.HomeHub.booking.controller.ServiceReviewController;
+import com.ga.HomeHub.booking.exception.ApiExceptionHandler;
+import com.ga.HomeHub.booking.model.Booking;
+import com.ga.HomeHub.booking.model.HomeownerAssessment;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.ServiceOffering;
+import com.ga.HomeHub.booking.model.ServiceReport;
+import com.ga.HomeHub.booking.model.ServiceReview;
+import com.ga.HomeHub.booking.service.HomeownerAssessmentService;
+import com.ga.HomeHub.booking.service.ServiceReportService;
+import com.ga.HomeHub.booking.service.ServiceReviewService;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,12 +31,14 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringJUnitConfig(ServiceFeedbackControllerTest.Config.class)
 class ServiceFeedbackControllerTest{

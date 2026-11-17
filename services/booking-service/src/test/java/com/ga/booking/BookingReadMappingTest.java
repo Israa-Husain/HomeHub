@@ -1,41 +1,80 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.controller.BookingController;
-import com.ga.HomeHub.dto.BookingResponse;
-import com.ga.HomeHub.exception.InformationNotFoundException;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.Booking;
-import com.ga.HomeHub.model.Home;
-import com.ga.HomeHub.model.ProviderProfile;
-import com.ga.HomeHub.model.ServiceOffering;
-import com.ga.HomeHub.model.User;
-import com.ga.HomeHub.model.enums.BookingStatus;
-import com.ga.HomeHub.model.enums.BookingType;
-import com.ga.HomeHub.model.enums.Role;
-import com.ga.HomeHub.repository.BookingRepository;
-import com.ga.HomeHub.service.BookingService;
-import com.ga.HomeHub.service.CurrentUserService;
+import com.ga.HomeHub.booking.client.AccountDirectory;
+import com.ga.HomeHub.booking.config.BookingPolicyProperties;
+import com.ga.HomeHub.booking.controller.BookingController;
+import com.ga.HomeHub.booking.dto.BookingResponse;
+import com.ga.HomeHub.booking.exception.InformationNotFoundException;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.Booking;
+import com.ga.HomeHub.booking.model.Category;
+import com.ga.HomeHub.booking.model.Home;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.ServiceOffering;
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.BookingStatus;
+import com.ga.HomeHub.booking.model.enums.BookingType;
+import com.ga.HomeHub.booking.model.enums.Role;
+import com.ga.HomeHub.booking.model.enums.ServiceStatus;
+import com.ga.HomeHub.booking.repository.AvailabilityRepository;
+import com.ga.HomeHub.booking.repository.BookingRepository;
+import com.ga.HomeHub.booking.repository.BookingWaitlistRepository;
+import com.ga.HomeHub.booking.repository.ServiceOfferingRepository;
+import com.ga.HomeHub.booking.service.BookingService;
+import com.ga.HomeHub.booking.service.CurrentUserService;
+import com.ga.HomeHub.booking.validation.ProviderScheduleValidator;
+import com.ga.HomeHub.booking.validation.ServiceEligibilityValidator;
+import jakarta.persistence.EntityManager;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+import org.hibernate.boot.MetadataSources;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 // Isolated read/mapping regression tests: no application context, database or scheduler.
 @ExtendWith(MockitoExtension.class)
 class BookingReadMappingTest {
+    @Mock private AccountDirectory fixtureAccounts;
+
+    @Mock private EntityManager fixtureEntityManager;
+
+    @Mock private BookingWaitlistRepository fixtureWaiting;
+
+    @Mock private AvailabilityRepository fixtureAvailability;
+
     @Mock private BookingRepository repository;
     @Mock private CurrentUserService current;
     @InjectMocks private BookingService service;
@@ -148,34 +187,34 @@ class BookingReadMappingTest {
     @Test
     void nullableServiceSearchNameIsExplicitlyCastInGeneratedPostgresSql() throws Exception {
         // Exercise real Hibernate/PostgreSQL SQL generation with JDBC mocks, never a database.
-        var registry = new org.hibernate.boot.registry.StandardServiceRegistryBuilder()
+        var registry = new StandardServiceRegistryBuilder()
                 .applySetting("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect")
                 .applySetting("hibernate.boot.allow_jdbc_metadata_access", false)
                 .applySetting("hibernate.hbm2ddl.auto", "none")
                 .build();
         try {
-            var metadata = new org.hibernate.boot.MetadataSources(registry)
+            var metadata = new MetadataSources(registry)
                     .addAnnotatedClass(ServiceOffering.class)
                     .addAnnotatedClass(ProviderProfile.class)
                     .addAnnotatedClass(User.class)
-                    .addAnnotatedClass(com.ga.HomeHub.model.Category.class)
+                    .addAnnotatedClass(Category.class)
                     .buildMetadata();
             try (var factory = metadata.buildSessionFactory()) {
-                var jdbc = mock(java.sql.Connection.class);
-                var statement = mock(java.sql.PreparedStatement.class);
-                var rows = mock(java.sql.ResultSet.class);
-                var sqlStatements = new java.util.ArrayList<String>();
+                var jdbc = mock(Connection.class);
+                var statement = mock(PreparedStatement.class);
+                var rows = mock(ResultSet.class);
+                var sqlStatements = new ArrayList<String>();
                 when(jdbc.prepareStatement(anyString(), anyInt(), anyInt())).thenAnswer(invocation -> {
                     sqlStatements.add(invocation.getArgument(0));
                     return statement;
                 });
                 when(statement.executeQuery()).thenReturn(rows);
                 // A cursor with no rows avoids hydration; SQL generation and binding are real.
-                var method = com.ga.HomeHub.repository.ServiceOfferingRepository.class.getMethod(
+                var method = ServiceOfferingRepository.class.getMethod(
                         "searchServices", String.class, Long.class, Long.class, Double.class,
-                        Double.class, com.ga.HomeHub.model.enums.ServiceStatus.class,
-                        org.springframework.data.domain.Pageable.class);
-                String hql = method.getAnnotation(org.springframework.data.jpa.repository.Query.class).value();
+                        Double.class, ServiceStatus.class,
+                        Pageable.class);
+                String hql = method.getAnnotation(Query.class).value();
                 try (var session = factory.withOptions().connection(jdbc).openSession()) {
                     session.setDefaultReadOnly(true);
                     for (String name : new String[]{null, "Cleaning"}) {
@@ -185,21 +224,21 @@ class BookingReadMappingTest {
                                 .setParameter("providerId", null)
                                 .setParameter("minPrice", null)
                                 .setParameter("maxPrice", null)
-                                .setParameter("status", com.ga.HomeHub.model.enums.ServiceStatus.ACTIVE)
+                                .setParameter("status", ServiceStatus.ACTIVE)
                                 .setReadOnly(true)
                                 .getResultList();
                     }
                 }
                 assertEquals(2, sqlStatements.size());
                 for (String sql : sqlStatements) {
-                    String normalized = sql.toLowerCase(java.util.Locale.ROOT);
+                    String normalized = sql.toLowerCase(Locale.ROOT);
                     assertTrue(normalized.contains("cast(? as varchar"), sql);
                     assertTrue(normalized.replace("_", "").contains("providerstatus='approved'"), sql);
                     assertTrue(normalized.contains("status='active'"), sql);
                 }
             }
         } finally {
-            org.hibernate.boot.registry.StandardServiceRegistryBuilder.destroy(registry);
+            StandardServiceRegistryBuilder.destroy(registry);
         }
     }
 
@@ -223,5 +262,13 @@ class BookingReadMappingTest {
         booking.setBookingType(type);
         booking.setFinalPrice(price);
         return booking;
+    }
+
+    @BeforeEach
+    void wireCurrentProductionDependencies(){
+        Mockito.lenient().when(fixtureAccounts.isActive(ArgumentMatchers.any())).thenReturn(true);
+        ReflectionTestUtils.setField(service,"schedule",new ProviderScheduleValidator(fixtureAvailability,repository,fixtureWaiting));
+        ReflectionTestUtils.setField(service,"policy",new BookingPolicyProperties());
+        ReflectionTestUtils.setField(service,"eligibility",new ServiceEligibilityValidator(fixtureEntityManager,fixtureAccounts));
     }
 }

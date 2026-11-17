@@ -1,46 +1,58 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.dto.ProviderRequest;
-import com.ga.HomeHub.dto.ProviderResponse;
-import com.ga.HomeHub.dto.ServiceRequest;
-import com.ga.HomeHub.dto.ServiceResponse;
-import com.ga.HomeHub.exception.InformationNotFoundException;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.Category;
-import com.ga.HomeHub.model.ProviderProfile;
-import com.ga.HomeHub.model.ServiceOffering;
-import com.ga.HomeHub.model.User;
-import com.ga.HomeHub.model.enums.CategoryStatus;
-import com.ga.HomeHub.model.enums.ProviderStatus;
-import com.ga.HomeHub.model.enums.Role;
-import com.ga.HomeHub.model.enums.ServiceStatus;
-import com.ga.HomeHub.model.enums.UserStatus;
-import com.ga.HomeHub.repository.CategoryRepository;
-import com.ga.HomeHub.repository.ProviderProfileRepository;
-import com.ga.HomeHub.repository.ServiceOfferingRepository;
-import com.ga.HomeHub.service.AuditLogService;
-import com.ga.HomeHub.service.CurrentUserService;
-import com.ga.HomeHub.service.ProviderService;
-import com.ga.HomeHub.service.ServiceOfferingService;
+import com.ga.HomeHub.booking.dto.ProviderRequest;
+import com.ga.HomeHub.booking.dto.ProviderResponse;
+import com.ga.HomeHub.booking.dto.ServiceRequest;
+import com.ga.HomeHub.booking.dto.ServiceResponse;
+import com.ga.HomeHub.booking.exception.InformationNotFoundException;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.Category;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.ServiceOffering;
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.CategoryStatus;
+import com.ga.HomeHub.booking.model.enums.ProviderStatus;
+import com.ga.HomeHub.booking.model.enums.Role;
+import com.ga.HomeHub.booking.model.enums.ServiceStatus;
+import com.ga.HomeHub.booking.model.enums.UserStatus;
+import com.ga.HomeHub.booking.repository.CategoryRepository;
+import com.ga.HomeHub.booking.repository.ProviderProfileRepository;
+import com.ga.HomeHub.booking.repository.ServiceOfferingRepository;
+import com.ga.HomeHub.booking.service.AuditLogService;
+import com.ga.HomeHub.booking.service.CurrentUserService;
+import com.ga.HomeHub.booking.service.ProviderService;
+import com.ga.HomeHub.booking.service.ServiceOfferingService;
+import jakarta.persistence.EntityManager;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
-import java.util.List;
-import java.util.Optional;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ServiceProviderApiTest {
+    @Mock private EntityManager entityManager;
+
     @Mock private ServiceOfferingRepository services;
     @Mock private CategoryRepository categories;
     @Mock private ProviderProfileRepository providerRepository;
@@ -57,8 +69,9 @@ class ServiceProviderApiTest {
 
     @BeforeEach
     void setUp(){
-        providers=new ProviderService(providerRepository,current,audit);
-        offerings=new ServiceOfferingService(services,categories,providers,audit,current);
+        Mockito.lenient().when(providerRepository.lockById(ArgumentMatchers.anyLong())).thenAnswer(call->Optional.of(provider));
+        providers=new ProviderService(providerRepository,current,audit,entityManager);
+        offerings=new ServiceOfferingService(services,categories,providers,audit,current,providerRepository,entityManager);
         owner=new User();
         owner.setId(7L);
         owner.setRole(Role.PROVIDER);
@@ -276,7 +289,7 @@ class ServiceProviderApiTest {
         admin.setId(99L);
         admin.setRole(Role.ADMIN);
         when(current.getCurrentUser()).thenReturn(admin);
-        when(providerRepository.findById(11L)).thenReturn(Optional.of(provider));
+        when(providerRepository.lockById(11L)).thenReturn(Optional.of(provider));
         when(providerRepository.save(provider)).thenReturn(provider);
         assertSame(provider,providers.updateProviderStatus(11L));
         assertEquals(ProviderStatus.APPROVED,provider.getProviderStatus());

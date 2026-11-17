@@ -1,32 +1,58 @@
-package com.ga.HomeHub;
+package com.ga.booking;
 
-import com.ga.HomeHub.exception.BookingConflictException;
-import com.ga.HomeHub.exception.UnauthorizedException;
-import com.ga.HomeHub.model.*;
-import com.ga.HomeHub.model.enums.*;
-import com.ga.HomeHub.repository.*;
-import com.ga.HomeHub.service.*;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-
+import com.ga.HomeHub.booking.exception.BookingConflictException;
+import com.ga.HomeHub.booking.exception.UnauthorizedException;
+import com.ga.HomeHub.booking.model.Booking;
+import com.ga.HomeHub.booking.model.HomeownerAssessment;
+import com.ga.HomeHub.booking.model.ProviderProfile;
+import com.ga.HomeHub.booking.model.ServiceOffering;
+import com.ga.HomeHub.booking.model.ServiceReport;
+import com.ga.HomeHub.booking.model.ServiceReview;
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.BookingStatus;
+import com.ga.HomeHub.booking.model.enums.Role;
+import com.ga.HomeHub.booking.repository.BookingRepository;
+import com.ga.HomeHub.booking.repository.HomeownerAssessmentRepository;
+import com.ga.HomeHub.booking.repository.ProviderProfileRepository;
+import com.ga.HomeHub.booking.repository.ServiceReportRepository;
+import com.ga.HomeHub.booking.repository.ServiceReviewRepository;
+import com.ga.HomeHub.booking.service.CurrentUserService;
+import com.ga.HomeHub.booking.service.HomeownerAssessmentService;
+import com.ga.HomeHub.booking.service.ServiceReportService;
+import com.ga.HomeHub.booking.service.ServiceReviewService;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 //Reports, reviews, and private assessments share the same post-service booking fixtures.
 @ExtendWith(MockitoExtension.class)
 class ServiceFeedbackServiceTest{
+    @Mock private EntityManager fixtureEntityManager;
+
+    @Mock private ProviderProfileRepository fixtureProviderLocks;
+
     @Mock private BookingRepository bookings;
     @Mock private CurrentUserService current;
     @Mock private ServiceReportRepository reports;
@@ -99,7 +125,7 @@ class ServiceFeedbackServiceTest{
         booking.setBookingDate(LocalDate.now().plusDays(1));
         assertThrows(BookingConflictException.class,()->reportService.submitServiceReport(6L,"Work",null,null));
         booking.setBookingDate(LocalDate.now().minusDays(1));
-        assertThrows(BookingConflictException.class,()->reportService.submitServiceReport(6L," ",null,null));
+        assertThrows(IllegalArgumentException.class,()->reportService.submitServiceReport(6L," ",null,null));
         when(reports.existsByBookingId(6L)).thenReturn(true);
         assertThrows(BookingConflictException.class,()->reportService.submitServiceReport(6L,"Work",null,null));
         booking.setStatus(BookingStatus.COMPLETED);
@@ -139,9 +165,9 @@ class ServiceFeedbackServiceTest{
         booking.setStatus(BookingStatus.CONFIRMED);
         assertThrows(BookingConflictException.class,()->reviewService.createServiceReviw(6L,5,"Good"));
         booking.setStatus(BookingStatus.COMPLETED);
-        assertThrows(BookingConflictException.class,()->reviewService.createServiceReviw(6L,0,"Good"));
-        assertThrows(BookingConflictException.class,()->reviewService.createServiceReviw(6L,6,"Good"));
-        assertThrows(BookingConflictException.class,()->reviewService.createServiceReviw(6L,5," "));
+        assertThrows(IllegalArgumentException.class,()->reviewService.createServiceReviw(6L,0,"Good"));
+        assertThrows(IllegalArgumentException.class,()->reviewService.createServiceReviw(6L,6,"Good"));
+        assertThrows(IllegalArgumentException.class,()->reviewService.createServiceReviw(6L,5," "));
         when(reviews.existsByBookingId(6L)).thenReturn(true);
         assertThrows(BookingConflictException.class,()->reviewService.createServiceReviw(6L,5,"Good"));
         verify(reviews,never()).save(any());
@@ -199,9 +225,9 @@ class ServiceFeedbackServiceTest{
         booking.setStatus(BookingStatus.PENDING);
         assertThrows(BookingConflictException.class,()->assessmentService.submitHomeownerAssessment(6L,5,null));
         booking.setStatus(BookingStatus.COMPLETED);
-        assertThrows(BookingConflictException.class,()->assessmentService.submitHomeownerAssessment(6L,0,null));
-        assertThrows(BookingConflictException.class,()->assessmentService.submitHomeownerAssessment(6L,6,null));
-        assertThrows(BookingConflictException.class,()->assessmentService.submitHomeownerAssessment(6L,null," "));
+        assertThrows(IllegalArgumentException.class,()->assessmentService.submitHomeownerAssessment(6L,0,null));
+        assertThrows(IllegalArgumentException.class,()->assessmentService.submitHomeownerAssessment(6L,6,null));
+        assertThrows(IllegalArgumentException.class,()->assessmentService.submitHomeownerAssessment(6L,null," "));
         when(assessments.existsByBookingId(6L)).thenReturn(true);
         assertThrows(BookingConflictException.class,()->assessmentService.submitHomeownerAssessment(6L,5,null));
         verify(assessments,never()).save(any());
@@ -215,5 +241,10 @@ class ServiceFeedbackServiceTest{
     private void ownerBooking(){
         when(bookings.findById(6L)).thenReturn(Optional.of(booking));
         when(current.getCurrentUser()).thenReturn(homeowner);
+    }
+
+    @BeforeEach
+    void wireCurrentProductionDependencies(){
+        Mockito.lenient().when(fixtureProviderLocks.lockById(ArgumentMatchers.anyLong())).thenAnswer(call->Optional.of(booking.getService().getProvider()));
     }
 }
