@@ -29,19 +29,19 @@ pipeline {
 
         stage('Build Auth') {
             steps {
-                sh 'sh ./mvnw -B -ntp -f services/auth-service/pom.xml clean verify'
+                sh 'sh ./mvnw -B -ntp -U -e -f services/auth-service/pom.xml clean verify'
             }
         }
 
         stage('Build Booking') {
             steps {
-                sh 'sh ./mvnw -B -ntp -f services/booking-service/pom.xml clean verify'
+                sh 'sh ./mvnw -B -ntp -U -e -f services/booking-service/pom.xml clean verify'
             }
         }
 
         stage('Build Notification') {
             steps {
-                sh 'sh ./mvnw -B -ntp -f services/notification-service/pom.xml clean verify'
+                sh 'sh ./mvnw -B -ntp -U -e -f services/notification-service/pom.xml clean verify'
             }
         }
     }
