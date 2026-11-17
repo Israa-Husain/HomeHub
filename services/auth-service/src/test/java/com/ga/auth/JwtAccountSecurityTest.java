@@ -1,18 +1,20 @@
-package com.ga.HomeHub;
+package com.ga.auth;
 
-import com.ga.HomeHub.model.User;
-import com.ga.HomeHub.model.enums.Role;
-import com.ga.HomeHub.model.enums.UserStatus;
-import com.ga.HomeHub.repository.UserRepository;
-import com.ga.HomeHub.security.JWTUtils;
-import com.ga.HomeHub.security.JwtRequestFilter;
-import com.ga.HomeHub.security.MyUserDetails;
-import com.ga.HomeHub.security.MyUserDetailsService;
+import com.ga.HomeHub.auth.model.User;
+import com.ga.HomeHub.auth.model.enums.Role;
+import com.ga.HomeHub.auth.model.enums.UserStatus;
+import com.ga.HomeHub.auth.repository.UserRepository;
+import com.ga.HomeHub.auth.security.JWTUtils;
+import com.ga.HomeHub.auth.security.JwtRequestFilter;
+import com.ga.HomeHub.auth.security.MyUserDetails;
+import com.ga.HomeHub.auth.security.MyUserDetailsService;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.io.Encoders;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.FilterChain;
+import java.security.Key;
+import java.util.Date;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,12 +26,15 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.security.Key;
-import java.util.Date;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 //Real JWT signing/filter logic with mocked persistence; no live account or production signing key.
 @ExtendWith(MockitoExtension.class)
