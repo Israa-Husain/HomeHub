@@ -12,6 +12,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.apache.kafka.common.errors.RetriableException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -138,7 +141,7 @@ public class NotificationTestData{
             return;
         }
 
-        //Capture scenario values before Awaitility uses its worker thread.
+        //Capture scenario values before switching to the polling thread.
         TopicPartition target=new TopicPartition(
                 TOPIC,
                 state.getPartition()
@@ -147,21 +150,28 @@ public class NotificationTestData{
 
         Map<String,Object> properties=Map.of(
                 "bootstrap.servers",broker.getBrokersAsString(),
-                "default.api.timeout.ms",3000,
-                "request.timeout.ms",3000
+                "default.api.timeout.ms",5000,
+                "request.timeout.ms",5000
         );
 
         try(Admin admin=Admin.create(properties)){
+            //Retry temporary Kafka errors within a bounded wait.
             await()
-                    .atMost(Duration.ofSeconds(25))
-                    .pollInterval(Duration.ofMillis(200))
+                    .alias("Notification consumer commits the published event")
+                    .atMost(Duration.ofSeconds(60))
+                    .pollInterval(Duration.ofMillis(500))
+                    .ignoreExceptionsMatching(error->
+                            error instanceof TimeoutException
+                                    ||(error instanceof ExecutionException
+                                    &&error.getCause() instanceof RetriableException)
+                    )
                     .until(()->{
                         var committed=admin
                                 .listConsumerGroupOffsets(
                                         "homehub-notification-cucumber"
                                 )
                                 .partitionsToOffsetAndMetadata()
-                                .get(3,TimeUnit.SECONDS)
+                                .get(6,TimeUnit.SECONDS)
                                 .get(target);
 
                         return committed!=null
