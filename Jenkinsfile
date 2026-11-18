@@ -51,6 +51,53 @@ pipeline {
                 sh 'docker build --build-arg SERVICE=notification-service -t homehub-notification:local .'
             }
         }
+
+                stage('Push Images to ECR') {
+                    environment {
+                        AWS_DEFAULT_REGION = 'eu-north-1'
+                        ECR_REGISTRY = '831617909438.dkr.ecr.eu-north-1.amazonaws.com'
+                    }
+
+                    steps {
+                        withCredentials([
+                            usernamePassword(
+                                credentialsId: 'homehub-aws-ecr',
+                                usernameVariable: 'AWS_ACCESS_KEY_ID',
+                                passwordVariable: 'AWS_SECRET_ACCESS_KEY'
+                            )
+                        ]) {
+                            sh '''#!/bin/bash
+        set -euo pipefail
+        set +x
+
+        export DOCKER_CONFIG
+        DOCKER_CONFIG=$(mktemp -d)
+        trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+
+        docker run --rm \
+            -e AWS_ACCESS_KEY_ID \
+            -e AWS_SECRET_ACCESS_KEY \
+            -e AWS_DEFAULT_REGION \
+            public.ecr.aws/aws-cli/aws-cli:latest \
+            ecr get-login-password \
+            | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+        IMAGE_TAG="build-${BUILD_NUMBER}"
+
+        for SERVICE in auth booking notification; do
+            LOCAL_IMAGE="homehub-${SERVICE}:local"
+            REMOTE_IMAGE="${ECR_REGISTRY}/homehub-${SERVICE}:${IMAGE_TAG}"
+
+            docker tag "$LOCAL_IMAGE" "$REMOTE_IMAGE"
+            docker push "$REMOTE_IMAGE"
+        done
+
+        echo "Uploaded all three images with tag: ${IMAGE_TAG}"
+        '''
+                        }
+                    }
+                }
+
     }
 
     post {
