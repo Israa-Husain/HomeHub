@@ -1,0 +1,15 @@
+package com.ga.HomeHub.booking.dto.user;
+
+import com.ga.HomeHub.booking.model.User;
+import com.ga.HomeHub.booking.model.enums.Role;
+import com.ga.HomeHub.booking.model.enums.UserStatus;
+
+import java.time.LocalDateTime;
+
+
+public record UserResponse(Long id, String firstName, String lastName, String email, String phoneNumber, String profilePictureUrl, Role role, UserStatus status, boolean isEmailVerified, LocalDateTime createdAt, LocalDateTime updatedAt) {
+
+    public static UserResponse from(User user) {
+        return new UserResponse(user.getId(), user.getFirstName(), user.getLastName(), user.getEmailAddress(), user.getPhoneNumber(), user.getProfilePictureUrl(), user.getRole(), user.getStatus(), user.isEmailVerified(), user.getCreatedAt(), user.getUpdatedAt());
+    }
+}

@@ -1,0 +1,11 @@
+package com.ga.HomeHub.booking.repository;
+
+import com.ga.HomeHub.booking.model.ServiceReport;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Optional;
+
+public interface ServiceReportRepository extends JpaRepository<ServiceReport,Long> {
+    boolean existsByBookingId(Long bookingId);
+    Optional<ServiceReport> findByBooking_Id(Long bookingId);
+}
