@@ -44,6 +44,13 @@ pipeline {
                 sh 'sh ./mvnw -B -ntp -U -e -f services/notification-service/pom.xml clean verify'
             }
         }
+        stage('Build Docker Images') {
+            steps {
+                sh 'docker build --build-arg SERVICE=auth-service -t homehub-auth:local .'
+                sh 'docker build --build-arg SERVICE=booking-service -t homehub-booking:local .'
+                sh 'docker build --build-arg SERVICE=notification-service -t homehub-notification:local .'
+            }
+        }
     }
 
     post {
