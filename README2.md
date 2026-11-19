@@ -347,7 +347,6 @@ Check from the browser through CloudFront as well. Local health confirms the pro
 | Frontend CI and deployment | Jenkins HomeHub-Frontend build **#2** passed checkout, test/build and deployment. A prior frontend source check reported 20 automated tests passing and a successful Vite production build. |
 | Browser smoke tests | Live homeowner sign-in and account page, provider business profile submission and admin approval were exercised. An image upload and retrieval through the deployed setup were checked. |
 | Backend scenarios | Service-level JUnit and Cucumber assets cover Auth, Booking and Notification behavior. Jenkins archives reports produced by the configured run. |
-| Still to demonstrate | Full deployed booking-to-confirmation flow, concurrent requests for one slot, Kafka outage and recovery, and a frontend build triggered automatically by a repository change. |
 
 To rerun the main checks locally:
 
